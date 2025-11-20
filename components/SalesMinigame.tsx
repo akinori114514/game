@@ -52,6 +52,22 @@ export const SalesMinigame: React.FC<Props> = ({
   const [activeDealMRR, setActiveDealMRR] = useState<number>(0);
   const [successBonus, setSuccessBonus] = useState(0);
   const resolutionRef = useRef(false);
+  const previewChance = useMemo(() => {
+      const salesCount = employees.filter(e => e.role === Role.SALES).length;
+      const productQuality = Math.max(0, 100 - techDebt);
+      const difficultyImpact = difficultyModifier && difficultyModifier.remainingWeeks > 0 ? difficultyModifier.modifier : 0;
+      if (activeEvent) {
+          return calculateMajorEventSuccess(activeEvent, { pmf: pmfScore, salesCount, productQuality }, successBonus);
+      }
+      if (selectedTarget) {
+          const profile = getDealProfile(selectedTarget, phase);
+          if (!profile) return null;
+          const baseResistance = Math.max(1, profile.resistance * (1 - difficultyImpact));
+          const modifierBase = (profile.successModifierBase || 0) + successBonus;
+          return calculateDealSuccess(pmfScore, salesCount, productQuality, modifierBase, baseResistance);
+      }
+      return null;
+  }, [activeEvent, selectedTarget, employees, techDebt, difficultyModifier, pmfScore, phase, successBonus]);
   
   // Battle State to track accumulated penalties
   const [accumulatedDebt, setAccumulatedDebt] = useState(0);
@@ -87,7 +103,8 @@ export const SalesMinigame: React.FC<Props> = ({
       lock: 'ロック',
       riskFail: '敗北時SAN値激減',
       mrrScaled: 'MRR: フェーズに応じてスケール',
-      noNewPosts: '新規トレンドなし'
+      noNewPosts: '新規トレンドなし',
+      successRate: '成功率'
     };
     const en: Record<string, string> = {
       selectTitle: 'Choose a sales target',
@@ -102,7 +119,8 @@ export const SalesMinigame: React.FC<Props> = ({
       lock: 'LOCK',
       riskFail: 'SAN loss on failure',
       mrrScaled: 'MRR scales with phase',
-      noNewPosts: 'No new trending posts'
+      noNewPosts: 'No new trending posts',
+      successRate: 'Success'
     };
     const dict = lang === 'ja' ? ja : en;
     return dict[key] || fallback;
@@ -399,6 +417,11 @@ export const SalesMinigame: React.FC<Props> = ({
                 style={{ width: `${(clientResistance / maxResistance) * 100}%` }}
               ></div>
             </div>
+            {previewChance !== null && (
+              <div className="mt-2 text-xs text-slate-300">
+                {t('successRate','Success')}: {(previewChance * 100).toFixed(1)}%
+              </div>
+            )}
           </div>
 
           {/* Action Feedback */}
