@@ -70,6 +70,10 @@ const InitialState: GameState = {
   leads: 0,
   tech_debt: 0,
   hiring_friction_weeks: 0,
+  actionPoints: 3,
+  maxActionPoints: 3,
+  turnNumber: 0,
+  seedInitialSalesMissionsLeft: 3,
   mentor_type: InvestorType.NONE,
   investor_type: InvestorType.NONE,
   last_month_mrr: 0,
@@ -274,8 +278,13 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
 
   const doCustomerInterview = () => {
       playSound('click');
+      if (gameState.actionPoints <= 0) {
+          addNotification('SYSTEM', '今週の行動ポイントが足りません');
+          return;
+      }
       if (gameState.cash < 50000) return;
       setGameState(prev => {
+          const ap = Math.max(0, prev.actionPoints - 1);
           const updated = {
               ...prev,
               cash: prev.cash - 50000,
@@ -284,7 +293,8 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
               philosophy: { 
                   ...prev.philosophy, 
                   craftsmanship: prev.philosophy.craftsmanship + 2 
-              }
+              },
+              actionPoints: ap
           };
           return { ...updated, logs: appendLog(updated, '顧客ヒアリングを実施。PMFの兆しが見えた。', 'SUCCESS') };
       });
@@ -293,6 +303,11 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
 
   const hireEmployee = (role: Role) => {
     playSound('click');
+    const costAP = role === Role.ENGINEER ? 2 : 1;
+    if (gameState.actionPoints < costAP) {
+      addNotification('SYSTEM', '行動ポイントが足りません');
+      return;
+    }
     if (gameState.cash < 500000) return; 
     let salary = 600000; 
     if (gameState.investor_type === InvestorType.BLITZ) salary = 900000;
@@ -322,7 +337,8 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         ...prev,
         employees: [...prev.employees, newEmp],
         cash: prev.cash - 300000, 
-        hiring_friction_weeks: 4
+        hiring_friction_weeks: 4,
+        actionPoints: Math.max(0, prev.actionPoints - costAP)
       };
       return { ...updated, logs: appendLog(updated, `${role}を採用した。(月給: ¥${(salary/10000).toFixed(0)}万)`, 'INFO') };
     });
@@ -393,6 +409,28 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
 
   const startSalesPitch = (target?: SalesTarget) => {
       playSound('click');
+      const reqAP = 2;
+      const isEvent = !!gameState.active_major_event;
+      const isSeedMission = gameState.phase === Phase.SEED && (gameState.seedInitialSalesMissionsLeft || 0) > 0;
+      const isEmergency = gameState.kpi.MRR < (monthlyBurn || 1) * 0.8;
+
+      if (!isEvent && !isSeedMission && !isEmergency) {
+          addNotification('SYSTEM', '今は特別な案件のみ営業可能です');
+          return;
+      }
+      if (!isEvent && gameState.actionPoints < reqAP) {
+          addNotification('SYSTEM', '今週の行動ポイントが足りません');
+          return;
+      }
+
+      if (!isEvent) {
+          setGameState(prev => ({
+              ...prev,
+              actionPoints: prev.actionPoints - reqAP,
+              seedInitialSalesMissionsLeft: prev.phase === Phase.SEED && prev.seedInitialSalesMissionsLeft ? prev.seedInitialSalesMissionsLeft - 1 : prev.seedInitialSalesMissionsLeft
+          }));
+      }
+
       if (gameState.active_major_event) {
           setSalesModalTarget(undefined);
       } else {

@@ -254,11 +254,13 @@ export interface FloatingText {
 export interface GameState {
   date: string;
   week: number;
+  turnNumber: number;
   cash: number;
   runway_months: number;
   sanity: number;
   phase: Phase;
   pmf_score: number;
+  productQuality?: number;
   co_founder: CoFounder | null;
   employees: Employee[];
   kpi: KPI;
@@ -266,6 +268,9 @@ export interface GameState {
   leads: number;
   tech_debt: number;
   hiring_friction_weeks: number;
+  actionPoints: number;
+  maxActionPoints: number;
+  seedInitialSalesMissionsLeft?: number;
   
   // Investor System
   mentor_type: InvestorType; // Chosen in Seed

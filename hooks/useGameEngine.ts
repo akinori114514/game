@@ -3,6 +3,7 @@ import { useMemo } from 'react';
 import { GameState, Role, Phase, InvestorType, PricingStrategy, MarketTrend, CoFounderType } from '../types';
 import { useScenario } from './useScenario';
 import { tickDifficultyModifier } from '../services/difficultyModifier';
+import { applyMRRUpdate } from '../services/revenueLogic';
 
 export const useGameEngine = (
     gameState: GameState, 
@@ -219,9 +220,12 @@ export const useGameEngine = (
                     nextState.whale_opportunity = true;
                 }
             }
-    
+
             nextState.flags.pmf_frozen = false; 
-    
+            nextState.turnNumber = (nextState.turnNumber || 0) + 1;
+            nextState.actionPoints = nextState.maxActionPoints;
+            nextState = applyMRRUpdate(nextState);
+
             nextState.pipeline_metrics = {
                 leads_generated: budgetLeads,
                 sales_capacity: actualSalesCapacity,
