@@ -42,6 +42,10 @@ interface GameContextProps {
   unreadCount: number;
   markAllAsRead: () => void;
   playSound: (type: 'notification' | 'error' | 'success' | 'click') => void;
+
+  // Language
+  lang: 'ja' | 'en';
+  setLanguage: (lang: 'ja' | 'en') => void;
 }
 
 const InitialState: GameState = {
@@ -129,6 +133,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
   const [salesModalTarget, setSalesModalTarget] = useState<SalesTarget | undefined>(undefined);
   const [turnBonuses, setTurnBonuses] = useState({ goldenLeadHit: false, incidentsResolved: 0 });
   const [floatingTexts, setFloatingTexts] = useState<FloatingText[]>([]);
+  const [lang, setLanguage] = useState<'ja' | 'en'>('ja');
   
   const playSound = (type: 'notification' | 'error' | 'success' | 'click') => {
       playSfx(type);
@@ -466,6 +471,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         assignManager,
         openSocialPost, closeSocialPost, replyToSocialPost,
         unreadCount, markAllAsRead, playSound
+        , lang, setLanguage
     }}>
       {children}
     </GameContext.Provider>
