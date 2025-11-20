@@ -187,6 +187,17 @@ export const Dashboard = () => {
                           <span>Growth: {(gameState.kpi.growth_rate_mom*100).toFixed(1)}%</span>
                       </div>
                   </div>
+                  <div className="p-4 bg-black/20 border border-white/5 rounded col-span-2">
+                      <div className="text-xs opacity-50 uppercase mb-1">Action Points</div>
+                      <div className="flex items-center justify-between">
+                        <div className="text-2xl font-mono font-bold">
+                          {gameState.actionPoints}/{gameState.maxActionPoints}
+                        </div>
+                        {gameState.actionPoints <= 0 && (
+                          <span className="text-xs text-red-400">今週の行動ポイントはありません</span>
+                        )}
+                      </div>
+                  </div>
               </div>
 
               {/* Sanity Bar */}
