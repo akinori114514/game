@@ -163,14 +163,14 @@ export const useNotificationSystem = (
                     id: 'argue',
                     label: '反論する (Argue)',
                     riskDescription: 'SAN値は回復するが、炎上リスク(Churn増)がある',
-                    effect: (s) => {
-                        const isFlame = Math.random() > 0.7;
-                        return {
-                            sanity: Math.min(100, s.sanity + 5),
-                            kpi: isFlame ? { ...s.kpi, churn_rate: s.kpi.churn_rate + 0.01 } : s.kpi,
-                            notifications: isFlame ? [...s.notifications, { id: Date.now().toString(), type: 'ALERT', message: 'Refuted tweet caused a FLAME WAR!', timestamp: Date.now(), isRead: false }] : s.notifications
-                        };
-                    }
+                            effect: (s) => {
+                                const isFlame = Math.random() > 0.7;
+                                return {
+                                    sanity: Math.min(100, s.sanity + 5),
+                                    kpi: isFlame ? { ...s.kpi, churn_rate: s.kpi.churn_rate + 0.01 } : s.kpi,
+                                    notifications: isFlame ? [...s.notifications, { id: Date.now().toString(), type: 'ALERT', message: '反論ツイートで炎上が発生。', timestamp: Date.now(), isRead: false }] : s.notifications
+                                };
+                            }
                 }
             ];
         }

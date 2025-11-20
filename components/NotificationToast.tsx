@@ -4,29 +4,44 @@ import { useGame } from '../context/GameContext';
 import { MessageSquare, AlertTriangle, Terminal, Globe, Server, Hash, HeartCrack } from 'lucide-react';
 import { GameNotification, NotificationType } from '../types';
 
+interface ToastEntry {
+  note: GameNotification;
+  count: number;
+  timeoutId?: number;
+}
+
 export const NotificationToast = () => {
   const { gameState, openSocialPost } = useGame();
   const { notifications, is_machine_mode, is_decision_mode } = gameState;
-  const [activeToasts, setActiveToasts] = useState<GameNotification[]>([]);
+  const [activeToasts, setActiveToasts] = useState<ToastEntry[]>([]);
 
-  // When notifications change, detect new ones and add to activeToasts
   useEffect(() => {
     if (notifications.length === 0) return;
-    
     const latest = notifications[notifications.length - 1];
-    // Only show if it was created recently (e.g., in the last second)
-    // This prevents flood on re-render
+
     if (Date.now() - latest.timestamp < 1000) {
         setActiveToasts(prev => {
-            // Avoid duplicates
-            if (prev.some(n => n.id === latest.id)) return prev;
-            return [...prev, latest];
-        });
+            const existingIndex = prev.findIndex(entry => entry.note.message === latest.message && entry.note.type === latest.type);
+            const scheduleRemoval = (id: string) => {
+              if (typeof window === 'undefined') return undefined;
+              return window.setTimeout(() => {
+                  setActiveToasts(current => current.filter(entry => entry.note.id !== id));
+              }, 5000);
+            };
 
-        // Remove after delay
-        setTimeout(() => {
-            setActiveToasts(prev => prev.filter(n => n.id !== latest.id));
-        }, 5000);
+            if (existingIndex >= 0) {
+                const existing = prev[existingIndex];
+                if (existing.timeoutId && typeof window !== 'undefined') {
+                    window.clearTimeout(existing.timeoutId);
+                }
+                const timeoutId = scheduleRemoval(latest.id);
+                const updatedEntry = { ...existing, note: latest, count: existing.count + 1, timeoutId };
+                return [...prev.slice(0, existingIndex), updatedEntry, ...prev.slice(existingIndex + 1)];
+            }
+
+            const timeoutId = scheduleRemoval(latest.id);
+            return [...prev, { note: latest, count: 1, timeoutId }];
+        });
     }
   }, [notifications]);
 
@@ -56,7 +71,7 @@ export const NotificationToast = () => {
   };
 
   return (
-    <div className="fixed top-6 right-6 z-[60] flex flex-col gap-3 pointer-events-none">
+    <div className="fixed bottom-6 right-6 z-[60] flex flex-col gap-3 pointer-events-none">
       <style>{`
         @keyframes shake {
           0%, 100% { transform: translateX(0); }
@@ -66,44 +81,47 @@ export const NotificationToast = () => {
         .shake-animation { animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both; }
       `}</style>
 
-      {activeToasts.map((note) => (
+      {activeToasts.map((entry) => (
         <div 
-            key={note.id}
+            key={entry.note.id}
             onClick={() => {
-                if (note.type === 'SOCIAL' && note.relatedPostId) {
-                    openSocialPost(note.relatedPostId);
+                if (entry.note.type === 'SOCIAL' && entry.note.relatedPostId) {
+                    openSocialPost(entry.note.relatedPostId);
                 }
             }}
             className={`
                 pointer-events-auto
                 w-80 p-4 rounded-lg shadow-2xl backdrop-blur-xl border transition-all duration-500 cursor-pointer
                 animate-in slide-in-from-right-10 fade-in
-                ${getToneStyles(note.tone)}
+                ${getToneStyles(entry.note.tone)}
                 hover:scale-105 active:scale-95
             `}
         >
             <div className="flex items-start gap-3">
                 <div className={`p-2 rounded-lg ${
-                     note.tone === 'ROBOTIC' ? 'bg-green-900/30' :
-                     note.tone === 'FAMILY_ANGRY' ? 'bg-red-700' :
-                     note.type === 'SLACK' ? 'bg-[#4A154B]' : 
-                     note.type === 'ALERT' ? 'bg-yellow-600' : 
-                     note.type === 'NEWS' ? 'bg-emerald-600' : 
-                     note.type === 'SOCIAL' ? 'bg-black border border-white/20' : 
-                     note.type === 'FAMILY_DM' ? 'bg-green-600' : 'bg-blue-600'
+                     entry.note.tone === 'ROBOTIC' ? 'bg-green-900/30' :
+                     entry.note.tone === 'FAMILY_ANGRY' ? 'bg-red-700' :
+                     entry.note.type === 'SLACK' ? 'bg-[#4A154B]' : 
+                     entry.note.type === 'ALERT' ? 'bg-yellow-600' : 
+                     entry.note.type === 'NEWS' ? 'bg-emerald-600' : 
+                     entry.note.type === 'SOCIAL' ? 'bg-black border border-white/20' : 
+                     entry.note.type === 'FAMILY_DM' ? 'bg-green-600' : 'bg-blue-600'
                 }`}>
-                    {getIcon(note)}
+                    {getIcon(entry.note)}
                 </div>
-                <div>
+                <div className="flex-1">
                     <div className="flex justify-between items-center mb-1">
-                         <span className={`text-[10px] font-bold uppercase tracking-wider ${note.tone === 'ROBOTIC' ? 'text-green-600' : 'text-white/50'}`}>
-                             {note.type}
+                         <span className={`text-[10px] font-bold uppercase tracking-wider ${entry.note.tone === 'ROBOTIC' ? 'text-green-600' : 'text-white/50'}`}>
+                             {entry.note.type}
                          </span>
                          <span className="text-[10px] opacity-50">now</span>
                     </div>
-                    <p className={`text-sm font-medium leading-snug ${note.tone === 'ROBOTIC' ? 'text-green-300' : 'text-white/90'}`}>
-                        {note.message}
+                    <p className={`text-sm font-medium leading-snug ${entry.note.tone === 'ROBOTIC' ? 'text-green-300' : 'text-white/90'}`}>
+                        {entry.note.message}
                     </p>
+                    {entry.count > 1 && (
+                        <div className="text-[10px] text-white/60 mt-2">同内容が{entry.count}件</div>
+                    )}
                 </div>
             </div>
         </div>

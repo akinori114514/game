@@ -265,7 +265,7 @@ export const useGameEngine = (
             return nextState;
         });
         
-        if (gameState.leads > 10 && Math.random() > 0.5) addNotification('SLACK', `New leads are piling up! (${gameState.leads})`);
+        if (gameState.leads > 10 && Math.random() > 0.5) addNotification('SLACK', `リードがたまってきました！ (${gameState.leads})`);
         if (gameState.phase !== Phase.SEED && !gameState.whale_opportunity && Math.random() > 0.98) {
             addNotification('ALERT', 'WHALE DETECTED: Big opportunity incoming!');
         }

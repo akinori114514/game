@@ -233,7 +233,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
           };
           return { ...updated, logs: appendLog(updated, '顧客ヒアリングを実施。PMFの兆しが見えた。', 'SUCCESS') };
       });
-      addNotification('SLACK', 'Good insights from user interview!');
+      addNotification('SLACK', 'ユーザーインタビューの示唆を得た。');
   };
 
   const hireEmployee = (role: Role) => {
@@ -271,7 +271,15 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       };
       return { ...updated, logs: appendLog(updated, `${role}を採用した。(月給: ¥${(salary/10000).toFixed(0)}万)`, 'INFO') };
     });
-    addNotification('SLACK', `New ${role} joined the team! 🎉`);
+    const roleNames: Record<Role, string> = {
+      ENGINEER: 'エンジニア',
+      SALES: '営業',
+      CS: 'CS',
+      MARKETER: 'マーケター',
+      MANAGER: 'マネージャー'
+    };
+    const roleLabel = roleNames[role] || 'メンバー';
+    addNotification('SLACK', `新しい${roleLabel}がチームに加入！ 🎉`);
   };
 
   const fireEmployee = (id: string) => {
