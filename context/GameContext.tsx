@@ -3,6 +3,8 @@ import { GameState, Role, Phase, Employee, CoFounderType, SalesTarget, Narrative
 import { useScenario } from '../hooks/useScenario';
 import { useNotificationSystem } from '../hooks/useNotificationSystem';
 import { useGameEngine } from '../hooks/useGameEngine';
+import { playSfx } from '../services/sfx';
+import { getDealProfile } from '../services/dealProfiles';
 
 interface GameContextProps {
   gameState: GameState;
@@ -129,8 +131,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
   const [floatingTexts, setFloatingTexts] = useState<FloatingText[]>([]);
   
   const playSound = (type: 'notification' | 'error' | 'success' | 'click') => {
-      // Placeholder for real SFX. In a real app, use Howler.js
-      console.log(`[SFX] ${type}`);
+      playSfx(type);
   };
 
   // Hooks
@@ -334,6 +335,14 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       setSalesModalTarget(undefined);
   };
 
+  const computeDealMRR = (target: SalesTarget, phase: Phase, pmfScore: number, employees: Employee[]) => {
+      const profile = getDealProfile(target, phase);
+      if (!profile) return 0;
+      if (pmfScore < profile.minPMF) return 0;
+      if (profile.requiresSales && !employees.some(e => e.role === Role.SALES)) return 0;
+      return profile.mrr;
+  };
+
   const completeSalesPitch = (target: SalesTarget, win: boolean, sideEffects: { techDebt: number, sanityCost: number, cashCost: number }) => {
       setIsSalesModalOpen(false);
       setSalesModalTarget(undefined);
@@ -341,13 +350,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       setGameState(prev => {
           let mrrGain = 0;
           if (win) {
-              switch (target) {
-                  case 'FRIENDS': mrrGain = 10000; break;
-                  case 'STARTUP': mrrGain = 50000; break;
-                  case 'ENTERPRISE': mrrGain = 200000; break;
-                  case 'WHALE': mrrGain = 1500000; break;
-              }
-              if (prev.pmf_score < 30 && target !== 'WHALE' && target !== 'FRIENDS') mrrGain = Math.floor(mrrGain * 0.1); 
+              mrrGain = computeDealMRR(target, prev.phase, prev.pmf_score, prev.employees);
           }
 
           const logMsg = win ? `商談成立(${target}): MRR +¥${mrrGain.toLocaleString()}` : `商談失敗(${target})...`;
@@ -393,16 +396,16 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
   // Helpers
   const getUITheme = () => {
     if (gameState.investor_type === InvestorType.BLITZ) {
-        return { bg: 'bg-red-950', text: 'text-red-500', border: 'border-red-600', accent: 'bg-red-600', font: 'font-sans' };
+        return { bg: 'bg-[#1a0e14]', text: 'text-[#ff8a9a]', border: 'border-[#ff5c8d]/70', accent: 'bg-[#ff5c8d]', font: 'font-sans' };
     }
     if (gameState.investor_type === InvestorType.PRODUCT) {
-        return { bg: 'bg-slate-900', text: 'text-blue-400', border: 'border-blue-500', accent: 'bg-blue-600', font: 'font-mono' };
+        return { bg: 'bg-[#0b1229]', text: 'text-[#8bd3ff]', border: 'border-[#3b82f6]/60', accent: 'bg-[#3b82f6]', font: 'font-mono' };
     }
     if (gameState.investor_type === InvestorType.FAMILY) {
-        return { bg: 'bg-stone-900', text: 'text-orange-400', border: 'border-orange-500', accent: 'bg-orange-600', font: 'font-serif' };
+        return { bg: 'bg-[#16100c]', text: 'text-[#f2c17d]', border: 'border-[#f59e0b]/60', accent: 'bg-[#f59e0b]', font: 'font-serif' };
     }
     // SEED / DEFAULT (Retro Terminal)
-    return { bg: 'bg-black', text: 'text-green-500', border: 'border-green-800', accent: 'bg-green-700', font: 'font-mono' };
+    return { bg: 'bg-[#0b1224]', text: 'text-slate-100', border: 'border-indigo-700/50', accent: 'bg-cyan-500', font: 'font-sans' };
   };
 
   const canUseCommand = (command: 'SALES' | 'FIRE' | 'PIVOT' | 'RECRUIT' | 'SIDE_GIG'): boolean => {

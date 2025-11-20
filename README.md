@@ -14,10 +14,9 @@ View your app in AI Studio: https://ai.studio/apps/drive/1yZ871-wfW50uimZeyMwgHn
 
 1. 依存をインストール  
    `npm ci`
-2. `.env.local.example` を `.env.local` にコピーし、`VITE_GEMINI_API_KEY` を設定  
-   `cp .env.local.example .env.local`
-3. 開発サーバー起動  
+2. 開発サーバー起動  
    `npm run dev`
+   - Gemini APIキーは不要です（VC助言は内蔵ロジックで応答します）。
 
 ## Deploy (GitHub Pages 用)
 - `main` ブランチへの push で `.github/workflows/deploy.yml` が動き、`dist` を Pages にデプロイします。

@@ -7,3 +7,5 @@
 - [x] 動作確認：npm install → npm run build / npm run dev で基本動作とビルドを確認する
 - [x] 環境変数の統一：`VITE_GEMINI_API_KEY` に揃え、.env.local.example と README を更新する
 - [x] 未実装補完：assignManager を実装して組織図操作を有効化する
+- [x] 営業スケール調整：フェーズ/PMF/営業人員で単価・抵抗をスケールさせ、創業者営業の減衰を導入
+- [x] SFX 追加：Web Audio で軽量効果音を実装して通知/クリック/成功/エラーを演出

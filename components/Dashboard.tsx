@@ -71,7 +71,7 @@ export const Dashboard = () => {
       {is_decision_mode && <div className="pointer-events-none fixed inset-0 z-10 bg-[radial-gradient(circle,transparent_50%,black_100%)] animate-pulse"></div>}
       
       {/* Modals */}
-      {isSalesModalOpen && <SalesMinigame onClose={closeSalesModal} onComplete={completeSalesPitch} employees={gameState.employees} coFounder={gameState.co_founder} sanity={gameState.sanity} cash={gameState.cash} directTarget={salesModalTarget} />}
+      {isSalesModalOpen && <SalesMinigame onClose={closeSalesModal} onComplete={completeSalesPitch} employees={gameState.employees} coFounder={gameState.co_founder} sanity={gameState.sanity} cash={gameState.cash} directTarget={salesModalTarget} phase={gameState.phase} pmfScore={gameState.pmf_score} />}
       {gameState.active_event && <NarrativeModal event={gameState.active_event} onResolve={resolveEvent} />}
       {isOrgChartOpen && <OrgChart onClose={() => setIsOrgChartOpen(false)} />}
       {gameState.active_social_post && <SocialFeedModal />}

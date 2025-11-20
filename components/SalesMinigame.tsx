@@ -1,7 +1,8 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { X, Zap, Briefcase, Building2, Rocket, Users, AlertTriangle, DollarSign, HeartCrack, Database, Crown } from 'lucide-react';
-import { SalesTarget, SalesCard, Employee, Role, CoFounderType, CoFounder } from '../types';
+import { X, Zap, Briefcase, Building2, Rocket, Users, DollarSign, HeartCrack, Database, Crown, Lock } from 'lucide-react';
+import { SalesTarget, SalesCard, Employee, Role, CoFounderType, CoFounder, Phase } from '../types';
+import { getDealProfile, getDealGateMessage } from '../services/dealProfiles';
 
 interface Props {
   onClose: () => void;
@@ -10,21 +11,26 @@ interface Props {
   coFounder: CoFounder | null;
   sanity: number;
   cash: number;
-  directTarget?: SalesTarget; // New Prop
+  directTarget?: SalesTarget;
+  phase: Phase;
+  pmfScore: number;
 }
 
-export const SalesMinigame: React.FC<Props> = ({ onClose, onComplete, employees, coFounder, sanity, cash, directTarget }) => {
+export const SalesMinigame: React.FC<Props> = ({ onClose, onComplete, employees, coFounder, sanity, cash, directTarget, phase, pmfScore }) => {
   const [step, setStep] = useState<'SELECT' | 'BATTLE'>('SELECT');
   const [selectedTarget, setSelectedTarget] = useState<SalesTarget | null>(null);
   const [clientResistance, setClientResistance] = useState(100);
   const [maxResistance, setMaxResistance] = useState(100);
   const [moves, setMoves] = useState(3);
   const [log, setLog] = useState<string[]>([]);
+  const [activeDealMRR, setActiveDealMRR] = useState<number>(0);
   
   // Battle State to track accumulated penalties
   const [accumulatedDebt, setAccumulatedDebt] = useState(0);
   const [accumulatedSanityCost, setAccumulatedSanityCost] = useState(0);
   const [accumulatedCashCost, setAccumulatedCashCost] = useState(0);
+
+  const hasSales = employees.some(e => e.role === Role.SALES);
 
   useEffect(() => {
       if (directTarget) {
@@ -48,11 +54,11 @@ export const SalesMinigame: React.FC<Props> = ({ onClose, onComplete, employees,
       }
 
       // Employee Cards
-      const hasSales = employees.some(e => e.role === Role.SALES);
+      const hasSalesMember = employees.some(e => e.role === Role.SALES);
       const hasEngineer = employees.some(e => e.role === Role.ENGINEER);
       const hasCS = employees.some(e => e.role === Role.CS);
 
-      if (hasSales) {
+      if (hasSalesMember) {
           cards.push({ id: 'sales_1', name: "接待", cost: 1, damage: 50, desc: "高級焼肉で落とす", costType: 'CASH', costAmount: 50000 });
           cards.push({ id: 'sales_2', name: "過剰な約束", cost: 1, damage: 80, desc: "「来月実装します！」", riskType: 'TECH_DEBT', riskAmount: 10 });
       }
@@ -73,40 +79,24 @@ export const SalesMinigame: React.FC<Props> = ({ onClose, onComplete, employees,
       return cards;
   }, [employees, coFounder]);
 
-
   const startBattle = (target: SalesTarget) => {
-      setSelectedTarget(target);
-      let resistance = 100;
-      let initialMoves = 3;
-      let targetName = "";
-
-      switch(target) {
-        case 'FRIENDS':
-            resistance = 30;
-            initialMoves = 3;
-            targetName = "友人・知人";
-            break;
-        case 'STARTUP':
-            resistance = 60;
-            initialMoves = 3;
-            targetName = "ベンチャー企業";
-            break;
-        case 'ENTERPRISE':
-            resistance = 120;
-            initialMoves = 4;
-            targetName = "大手企業";
-            break;
-        case 'WHALE':
-            resistance = 250;
-            initialMoves = 5;
-            targetName = "超巨大コングロマリット (WHALE)";
-            break;
+      const gate = getDealGateMessage({ target, phase, pmfScore, hasSales });
+      const profile = getDealProfile(target, phase);
+      if (!profile) {
+          setLog([`このフェーズでは ${target} の商談は解禁されていません。`]);
+          return;
+      }
+      if (gate) {
+          setLog([gate]);
+          return;
       }
 
-      setClientResistance(resistance);
-      setMaxResistance(resistance);
-      setMoves(initialMoves);
-      setLog([`商談開始。相手: ${targetName}`]);
+      setSelectedTarget(target);
+      setActiveDealMRR(profile.mrr);
+      setClientResistance(profile.resistance);
+      setMaxResistance(profile.resistance);
+      setMoves(profile.moves);
+      setLog([`商談開始。相手: ${profile.label} / 期待MRR ¥${profile.mrr.toLocaleString()}`]);
       setStep('BATTLE');
       
       setAccumulatedDebt(0);
@@ -152,12 +142,22 @@ export const SalesMinigame: React.FC<Props> = ({ onClose, onComplete, employees,
     }
   };
 
+  const targetLabel = selectedTarget === 'FRIENDS' ? '友人・知人' : selectedTarget === 'STARTUP' ? 'スタートアップ' : selectedTarget === 'ENTERPRISE' ? '大手企業' : '超巨大コングロマリット';
+
+  const gateStatus = (target: SalesTarget) => {
+      const msg = getDealGateMessage({ target, phase, pmfScore, hasSales });
+      return { disabled: !!msg, reason: msg };
+  };
+
   if (step === 'SELECT') {
       return (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 backdrop-blur-sm">
-            <div className="bg-slate-900 border border-slate-700 rounded-xl w-full max-w-5xl shadow-2xl overflow-hidden p-6">
+            <div className="bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 border border-indigo-700/40 rounded-2xl w-full max-w-5xl shadow-[0_20px_60px_rgba(0,0,0,0.55)] overflow-hidden p-6">
                 <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-2xl font-bold text-white">営業先を選定してください</h2>
+                    <div>
+                      <h2 className="text-2xl font-bold text-cyan-200">営業先を選定してください</h2>
+                      <p className="text-xs text-slate-400 mt-1">フェーズ/PMF/営業人員で解禁。上位案件ほど抵抗値は高いが単価が伸びます。</p>
+                    </div>
                     <button onClick={onClose}><X className="text-slate-400" /></button>
                 </div>
                 
@@ -176,64 +176,77 @@ export const SalesMinigame: React.FC<Props> = ({ onClose, onComplete, employees,
                             「応援購入」枠。安くてもいいから実績が欲しい。身内なので甘い。
                         </p>
                         <div className="text-xs font-mono text-blue-400 bg-blue-900/20 p-2 rounded">
-                            MRR: +¥10,000<br/>
+                            MRR: フェーズに応じてスケール<br/>
                             Risk: なし
                         </div>
                     </button>
 
                     {/* Startup Option */}
-                    <button 
-                        onClick={() => startBattle('STARTUP')}
-                        className="group relative border border-slate-700 bg-slate-800/50 hover:bg-slate-800 hover:border-emerald-500 rounded-xl p-4 transition-all text-left"
-                    >
-                        <div className="flex items-center justify-between mb-3">
-                            <Rocket className="w-8 h-8 text-emerald-400" />
-                            <span className="bg-emerald-500/20 text-emerald-300 text-[10px] px-2 py-1 rounded">難易度: C</span>
-                        </div>
-                        <h3 className="text-lg font-bold text-white mb-1">スタートアップ</h3>
-                        <p className="text-xs text-slate-400 mb-3 min-h-[3em]">
-                            決裁が早い。「面白そう」だけで買ってくれるが、予算はシビア。
-                        </p>
-                        <div className="text-xs font-mono text-emerald-400 bg-emerald-900/20 p-2 rounded">
-                            MRR: +¥50,000<br/>
-                            Risk: 失注でSAN値減少
-                        </div>
-                    </button>
+                    {(() => {
+                        const gate = gateStatus('STARTUP');
+                        return (
+                          <button 
+                              onClick={() => startBattle('STARTUP')}
+                              disabled={gate.disabled}
+                              className={`group relative border border-slate-700 bg-slate-800/50 rounded-xl p-4 transition-all text-left ${gate.disabled ? 'opacity-40 cursor-not-allowed' : 'hover:bg-slate-800 hover:border-emerald-500'}`}
+                          >
+                              <div className="flex items-center justify-between mb-3">
+                                  <Rocket className="w-8 h-8 text-emerald-400" />
+                                  <span className="bg-emerald-500/20 text-emerald-300 text-[10px] px-2 py-1 rounded">難易度: C</span>
+                              </div>
+                              <h3 className="text-lg font-bold text-white mb-1">スタートアップ</h3>
+                              <p className="text-xs text-slate-400 mb-3 min-h-[3em]">
+                                  決裁が早い。「面白そう」だけで買ってくれるが、予算はシビア。
+                              </p>
+                              <div className="text-xs font-mono text-emerald-400 bg-emerald-900/20 p-2 rounded">
+                                  {gate.disabled ? `LOCK: ${gate.reason}` : 'MRR: フェーズに応じてスケール'}
+                              </div>
+                          </button>
+                        );
+                    })()}
 
                     {/* Enterprise Option */}
-                    <button 
-                        onClick={() => startBattle('ENTERPRISE')}
-                        className="group relative border border-slate-700 bg-slate-800/50 hover:bg-slate-800 hover:border-indigo-500 rounded-xl p-4 transition-all text-left"
-                    >
-                        <div className="flex items-center justify-between mb-3">
-                            <Building2 className="w-8 h-8 text-indigo-400" />
-                            <span className="bg-indigo-500/20 text-indigo-300 text-[10px] px-2 py-1 rounded">難易度: S</span>
-                        </div>
-                        <h3 className="text-lg font-bold text-white mb-1">大手上場企業</h3>
-                        <p className="text-xs text-slate-400 mb-3 min-h-[3em]">
-                            PMFが低いと門前払い。「安心感」と「実績」が必要。
-                        </p>
-                        <div className="text-xs font-mono text-indigo-400 bg-indigo-900/20 p-2 rounded">
-                            MRR: +¥200,000<br/>
-                            Risk: 敗北時SAN値激減
-                        </div>
-                    </button>
+                    {(() => {
+                        const gate = gateStatus('ENTERPRISE');
+                        return (
+                          <button 
+                              onClick={() => startBattle('ENTERPRISE')}
+                              disabled={gate.disabled}
+                              className={`group relative border border-slate-700 bg-slate-800/50 rounded-xl p-4 transition-all text-left ${gate.disabled ? 'opacity-40 cursor-not-allowed' : 'hover:bg-slate-800 hover:border-indigo-500'}`}
+                          >
+                              <div className="flex items-center justify-between mb-3">
+                                  <Building2 className="w-8 h-8 text-indigo-400" />
+                                  <span className="bg-indigo-500/20 text-indigo-300 text-[10px] px-2 py-1 rounded">難易度: S</span>
+                              </div>
+                              <h3 className="text-lg font-bold text-white mb-1">大手上場企業</h3>
+                              <p className="text-xs text-slate-400 mb-3 min-h-[3em]">
+                                  PMFと営業チームが揃えば挑戦可。
+                              </p>
+                              <div className="text-xs font-mono text-indigo-400 bg-indigo-900/20 p-2 rounded">
+                                  {gate.disabled ? `LOCK: ${gate.reason}` : 'MRR: 高単価 / 失注時SAN値大きめ'}
+                              </div>
+                              {gate.disabled && (
+                                  <div className="mt-2 text-[10px] text-indigo-200 flex items-center gap-1">
+                                      <Lock size={12}/> {gate.reason}
+                                  </div>
+                              )}
+                          </button>
+                        );
+                    })()}
                 </div>
             </div>
         </div>
       );
   }
 
-  const targetLabel = selectedTarget === 'FRIENDS' ? '友人・知人' : selectedTarget === 'STARTUP' ? 'スタートアップ' : selectedTarget === 'ENTERPRISE' ? '大手企業' : '超巨大コングロマリット';
-
   return (
     <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 backdrop-blur-sm">
-      <div className="bg-slate-900 border border-slate-700 rounded-xl w-full max-w-2xl shadow-2xl overflow-hidden">
+      <div className="bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 border border-indigo-700/40 rounded-2xl w-full max-w-2xl shadow-[0_20px_60px_rgba(0,0,0,0.55)] overflow-hidden">
         {/* Header */}
-        <div className="bg-slate-800 p-4 flex justify-between items-center border-b border-slate-700">
-          <h3 className={`text-lg font-bold flex items-center ${selectedTarget === 'WHALE' ? 'text-yellow-400' : 'text-white'}`}>
-            {selectedTarget === 'WHALE' ? <Crown className="w-5 h-5 mr-2 text-yellow-400 animate-pulse" /> : <Briefcase className="w-5 h-5 mr-2 text-indigo-400" />}
-            商談中: {targetLabel}
+        <div className="bg-slate-800/60 p-4 flex justify-between items-center border-b border-indigo-700/40">
+          <h3 className={`text-lg font-bold flex items-center ${selectedTarget === 'WHALE' ? 'text-yellow-300' : 'text-cyan-200'}`}>
+            {selectedTarget === 'WHALE' ? <Crown className="w-5 h-5 mr-2 text-yellow-300 animate-pulse" /> : <Briefcase className="w-5 h-5 mr-2 text-cyan-300" />}
+            商談中: {targetLabel} {activeDealMRR > 0 && <span className="text-xs text-slate-400 ml-2">MRR ¥{activeDealMRR.toLocaleString()}</span>}
           </h3>
           <button onClick={onClose} className="text-slate-400 hover:text-white">
             <X className="w-5 h-5" />
@@ -241,7 +254,7 @@ export const SalesMinigame: React.FC<Props> = ({ onClose, onComplete, employees,
         </div>
 
         {/* Battle Area */}
-        <div className="p-8 flex flex-col items-center justify-center space-y-8 bg-gradient-to-b from-slate-900 to-slate-800">
+        <div className="p-8 flex flex-col items-center justify-center space-y-8 bg-gradient-to-b from-slate-950/80 to-slate-900">
           
           {/* Client Status */}
           <div className="w-full max-w-md text-center">
@@ -251,7 +264,7 @@ export const SalesMinigame: React.FC<Props> = ({ onClose, onComplete, employees,
             </div>
             <div className="h-4 bg-slate-700 rounded-full overflow-hidden border border-slate-600">
               <div 
-                className="h-full bg-red-500 transition-all duration-500" 
+                className="h-full bg-gradient-to-r from-indigo-400 to-cyan-300 transition-all duration-500" 
                 style={{ width: `${(clientResistance / maxResistance) * 100}%` }}
               ></div>
             </div>

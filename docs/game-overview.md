@@ -11,9 +11,9 @@
 - 3) 共創者/投資家効果：HACKER→技術 1.5 倍、HUSTLER→営業 1.5 倍。FAMILY→SAN 週 +2、PRODUCT→技術 1.2 倍、BLITZ→マーケ効率強化。
 - 4) 採用直後の摩擦（hiring_friction_weeks）で能力 0.9 倍。
 - 5) リード生成：マーケ予算 `budget/10000 * 効率` + PMF 由来のバイラル（PMF > 40）。BLITZ や PLG/BLITZ 戦略で増幅。
-- 6) 営業処理能力：セールス ×10 + 創業者ブースト（Seed 中 5）をボーナス/摩擦で補正。`pmf_frozen` の週は 0 件。
+- 6) 営業処理能力：セールス ×10 + 創業者ブースト（Seed 5件/週 → A 2件/週 → B 0件）をボーナス/摩擦で補正。`pmf_frozen` の週は 0 件。
 - 7) 成約率：`0.05 * (PMF/100)` を戦略/市況/TechDebt/ゴールデンリードで補正。PRODUCT 投資家で PMF < 40 または TechDebt > 30 の場合 0。
-- 8) 新規 MRR：成約件数 × ARPU（PLG 1 万 / 通常 5 万 / エンプラ 20 万 / BLITZ 0）。
+- 8) 新規 MRR：成約件数 × ARPU（PLG 1.2 万×フェーズ係数 / 通常 5 万×係数 / エンプラ 12 万×係数 / BLITZ 0）。フェーズ係数: Seed 1 / SeriesA 1.6 / SeriesB 2.4。
 - 9) CS/解約：CS キャパ不足や TechDebt、SAN 低下、市況で `churn_rate` を増減。FAMILY で 0.8 倍。インシデント解消で減算。
 - 10) キャッシュ：`weeklyBurn = monthlyBurn/4`、`cash = cash - weeklyBurn + MRR/4`。`runway_months` を再計算（赤字で月数、黒字なら 99.9）。
 - 11) 月次（4 週ごと）：MoM 成長計算。BLITZ で成長 < 20% は SAN -10、FAMILY は赤字月をカウント。
@@ -35,7 +35,7 @@
 - Interview: ¥5 万消費、PMF +5、SAN +5、クラフト志向 +2。
 - Side Gig（週 3 解放）: Cash +60 万、TechDebt +5、SAN -10、当週 PMF 凍結。即座に次ターン進行。
 - Recruit（週 6 解放）: 初期費 30 万、給与 60 万（BLITZ なら 90 万）/月、採用摩擦 4 週。マネージャーは 80 万。文化は役割で決定。
-- Sales Pitch: カード制ミニゲーム。ターゲット別に抵抗値/手数が変化（友人・スタートアップ・エンプラ・WHALE）。成約で MRR 増、カードコスト/リスクで SAN・Cash・TechDebt が増減。失注時は SAN に敗北ペナルティ。
+- Sales Pitch: カード制ミニゲーム。ターゲット別に抵抗値/手数・期待MRRがフェーズでスケール。Enterprise は SeriesA かつ PMF≧50 で解禁 + 営業人員必須、Whale は SeriesB & PMF≧70。成約で MRR 増、失注時は SAN ペナルティ。
 - Private Action: WORK で SAN -10 / リード +5 / 孤独 +2（Machine Mode チェックあり）。FAMILY で SAN +20 / 関係+15 / 孤独 -5。
 - Fire Employee: Cash -100 万、SAN -15、無慈悲 +10、孤独 +5。解雇履歴に追加（SNS で ALUMNI 投稿の材料に）。
 - Apply for Subsidy: Cash +200 万（フラグセットのみで再取得不可）。
@@ -63,8 +63,8 @@
 ## UI と補足
 - Dashboard 左: ログタイムライン。右: キャッシュ/MRR/SANITY とアクション、チーム一覧、PipelineView。
 - Smartphone: 通知の既読管理、Slack ログ、FAMILY DM、Social を整理。
-- OrgChart: ドラッグ＆ドロップで指揮系統を並べる（現状 assignManager は未実装スタブ）。
-- Gemini 連携: `services/geminiService.ts` で VC 風アドバイスを取得（`VITE_GEMINI_API_KEY` を `.env.local` に設定）。
+- OrgChart: ドラッグ＆ドロップで指揮系統を並べる（assignManager 実装済み、循環は自動防止）。
+- VC助言: `services/geminiService.ts` が投資家タイプ/成長率/ランウェイなどの数値から定型アドバイスを返す。外部API不要。
 
 ## 実行方法
 - Node.js 環境で `npm install` → `.env.local` に API キーを設定 → `npm run dev`。Vite + React/TypeScript 構成。`npm run build` で本番バンドル。

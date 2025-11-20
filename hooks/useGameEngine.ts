@@ -114,9 +114,10 @@ export const useGameEngine = (
             const budgetLeads = Math.floor((nextState.marketing_budget / 10000) * marketingEfficiency * productivityMultiplier);
             
             const strategy = nextState.pricing_strategy;
-            let arpu = 50000;
-            if (strategy === PricingStrategy.PLG) arpu = 10000;
-            if (strategy === PricingStrategy.ENTERPRISE) arpu = 200000;
+            const phaseMultiplier = nextState.phase === Phase.SEED ? 1 : nextState.phase === Phase.SERIES_A ? 1.6 : 2.4;
+            let arpu = 50000 * phaseMultiplier;
+            if (strategy === PricingStrategy.PLG) arpu = 12000 * phaseMultiplier;
+            if (strategy === PricingStrategy.ENTERPRISE) arpu = 120000 * phaseMultiplier;
             if (strategy === PricingStrategy.BLITZ) arpu = 0;
     
             const currentCustomers = Math.max(1, Math.floor(nextState.kpi.MRR / (arpu || 1)));
@@ -135,7 +136,7 @@ export const useGameEngine = (
             const totalLeads = nextState.leads + budgetLeads + organicLeads;
     
             const salesPeople = nextState.employees.filter(e => e.role === Role.SALES);
-            const founderPower = nextState.phase === Phase.SEED ? 5 : 0;
+            const founderPower = nextState.phase === Phase.SEED ? 5 : nextState.phase === Phase.SERIES_A ? 2 : 0;
             
             const salesCapacity = Math.floor(((salesPeople.length * 10 * salesBonus) + founderPower) * frictionPenalty * productivityMultiplier);
             const actualSalesCapacity = nextState.flags.pmf_frozen ? 0 : salesCapacity;
