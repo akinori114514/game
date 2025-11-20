@@ -2,6 +2,7 @@
 import { useMemo } from 'react';
 import { GameState, Role, Phase, InvestorType, PricingStrategy, MarketTrend, CoFounderType } from '../types';
 import { useScenario } from './useScenario';
+import { tickDifficultyModifier } from '../services/difficultyModifier';
 
 export const useGameEngine = (
     gameState: GameState, 
@@ -262,7 +263,7 @@ export const useGameEngine = (
                 nextState.is_game_over = true;
             }
     
-            return nextState;
+            return tickDifficultyModifier(nextState);
         });
         
         if (gameState.leads > 10 && Math.random() > 0.5) addNotification('SLACK', `リードがたまってきました！ (${gameState.leads})`);

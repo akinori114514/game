@@ -1,9 +1,10 @@
 import { createContext, useContext, useState, useMemo, useEffect, ReactNode } from 'react';
-import { GameState, Role, Phase, Employee, CoFounderType, SalesTarget, NarrativeEvent, InvestorType, PhilosophyProfile, GameNotification, NotificationType, PricingStrategy, FloatingText, CultureType, SocialPost, SocialReplyOption, MarketTrend, LogEntry } from '../types';
+import { GameState, Role, Phase, Employee, CoFounderType, SalesTarget, NarrativeEvent, InvestorType, PhilosophyProfile, GameNotification, NotificationType, PricingStrategy, FloatingText, CultureType, SocialPost, SocialReplyOption, MarketTrend, LogEntry, MajorEvent } from '../types';
 import { useScenario } from '../hooks/useScenario';
 import { useNotificationSystem } from '../hooks/useNotificationSystem';
 import { useGameEngine } from '../hooks/useGameEngine';
 import { playSfx } from '../services/sfx';
+import { triggerMajorEvent, applyMajorEventOutcome } from '../services/majorEvents';
 import { getDealProfile } from '../services/dealProfiles';
 
 interface GameContextProps {
@@ -16,7 +17,12 @@ interface GameContextProps {
   adjustMarketingBudget: (amount: number) => void;
   setPricingStrategy: (strategy: PricingStrategy) => void;
   startSalesPitch: (target?: SalesTarget) => void;
-  completeSalesPitch: (target: SalesTarget, win: boolean, sideEffects: { techDebt: number, sanityCost: number, cashCost: number }) => void;
+  completeSalesPitch: (
+    target: SalesTarget,
+    win: boolean,
+    sideEffects: { techDebt: number; sanityCost: number; cashCost: number },
+    metadata?: { successChance?: number; majorEventId?: string; customLabel?: string; isMajorEvent?: boolean }
+  ) => void;
   handlePrivateAction: (type: 'WORK' | 'FAMILY') => void;
   clickGoldenLead: () => void;
   resolveIncident: () => void;
@@ -37,6 +43,7 @@ interface GameContextProps {
   getUITheme: () => { bg: string; text: string; border: string; accent: string; font: string };
   canUseCommand: (command: 'SALES' | 'FIRE' | 'PIVOT' | 'RECRUIT' | 'SIDE_GIG') => boolean;
   floatingTexts: FloatingText[];
+  activeMajorEvent: MajorEvent | null;
   
   // Notification Logic
   unreadCount: number;
@@ -80,7 +87,10 @@ const InitialState: GameState = {
     market_trend_weeks_left: 8,
     is_interview_unlocked: true, // Always available
     is_side_gig_unlocked: false,
-    is_recruit_unlocked: false
+    is_recruit_unlocked: false,
+    has_triggered_seed_event: false,
+    has_triggered_series_a_event: false,
+    series_b_event_count: 0
   },
   pipeline_metrics: {
     leads_generated: 0,
@@ -106,7 +116,15 @@ const InitialState: GameState = {
   ],
   whale_opportunity: false,
   active_social_post: null,
-  fired_employees_history: []
+  fired_employees_history: [],
+  investors: [{ type: InvestorType.NONE, reputation: 0 }],
+  difficulty_modifier: undefined,
+  active_major_event: null,
+  majorEventCountByPhase: {
+    [Phase.SEED]: 0,
+    [Phase.SERIES_A]: 0,
+    [Phase.SERIES_B]: 0
+  }
 };
 
 const GameContext = createContext<GameContextProps | undefined>(undefined);
@@ -140,6 +158,43 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
   };
 
   // Hooks
+  const attemptMajorEvent = (force = false) => {
+      setGameState(prev => {
+          if (!force && prev.active_major_event) return prev;
+          const event = triggerMajorEvent(prev.phase, prev, { force });
+          if (!event) return prev;
+          const counts = prev.majorEventCountByPhase || { [Phase.SEED]: 0, [Phase.SERIES_A]: 0, [Phase.SERIES_B]: 0 };
+          const updatedCounts = { ...counts, [prev.phase]: (counts[prev.phase] || 0) + 1 };
+          return {
+              ...prev,
+              active_major_event: event,
+              majorEventCountByPhase: updatedCounts,
+              logs: appendLog(prev, `大型イベント発生: ${event.label}`, 'EVENT')
+          };
+      });
+  };
+
+  useEffect(() => {
+      attemptMajorEvent(true);
+  }, [gameState.phase]);
+
+  useEffect(() => {
+      if (gameState.phase === Phase.SERIES_B) {
+          attemptMajorEvent(false);
+      }
+  }, [gameState.week]);
+
+  useEffect(() => {
+      setGameState(prev => {
+          const main = prev.investors[0];
+          if (main && main.type === prev.investor_type) return prev;
+          const investors = prev.investors.length > 0
+              ? [{ ...prev.investors[0], type: prev.investor_type }, ...prev.investors.slice(1)]
+              : [{ type: prev.investor_type, reputation: 0 }];
+          return { ...prev, investors };
+      });
+  }, [gameState.investor_type]);
+
   const { addNotification, unreadCount, markAllAsRead, socialPostsCache } = useNotificationSystem(gameState, setGameState, playSound);
   const { monthlyBurn, nextTurn: engineNextTurn, withMachineModeCheck } = useGameEngine(gameState, setGameState, addNotification);
 
@@ -338,8 +393,12 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
 
   const startSalesPitch = (target?: SalesTarget) => {
       playSound('click');
-      if (target) setSalesModalTarget(target);
-      else setSalesModalTarget(undefined);
+      if (gameState.active_major_event) {
+          setSalesModalTarget(undefined);
+      } else {
+          if (target) setSalesModalTarget(target);
+          else setSalesModalTarget(undefined);
+      }
       setIsSalesModalOpen(true);
   };
 
@@ -356,20 +415,29 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       return profile.mrr;
   };
 
-  const completeSalesPitch = (target: SalesTarget, win: boolean, sideEffects: { techDebt: number, sanityCost: number, cashCost: number }) => {
+  const completeSalesPitch = (
+    target: SalesTarget,
+    win: boolean,
+    sideEffects: { techDebt: number; sanityCost: number; cashCost: number },
+    metadata?: { successChance?: number; majorEventId?: string; customLabel?: string; isMajorEvent?: boolean }
+  ) => {
       setIsSalesModalOpen(false);
       setSalesModalTarget(undefined);
       
       setGameState(prev => {
           let mrrGain = 0;
-          if (win) {
+          if (win && !metadata?.isMajorEvent) {
               mrrGain = computeDealMRR(target, prev.phase, prev.pmf_score, prev.employees);
           }
 
-          const logMsg = win ? `商談成立(${target}): MRR +¥${mrrGain.toLocaleString()}` : `商談失敗(${target})...`;
+          const label = metadata?.customLabel || target;
+          const chanceText = metadata?.successChance !== undefined ? ` (成功率 ${(metadata.successChance * 100).toFixed(1)}%)` : '';
+          const logMsg = win
+            ? `商談成立(${label}): MRR +¥${mrrGain.toLocaleString()}${chanceText}`
+            : `商談失敗(${label})...${chanceText}`;
           const logType = win ? 'SUCCESS' : 'WARNING';
 
-          return withMachineModeCheck({
+          let nextState = withMachineModeCheck({
               ...prev,
               kpi: { ...prev.kpi, MRR: prev.kpi.MRR + mrrGain },
               tech_debt: prev.tech_debt + sideEffects.techDebt,
@@ -377,6 +445,13 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
               sanity: Math.max(0, prev.sanity - sideEffects.sanityCost),
               logs: [...prev.logs, createLogEntry(prev, logMsg, logType)]
           });
+
+          if (metadata?.majorEventId && prev.active_major_event && prev.active_major_event.id === metadata.majorEventId) {
+              nextState = applyMajorEventOutcome(prev.active_major_event, win, nextState);
+              nextState = { ...nextState, active_major_event: null };
+          }
+
+          return nextState;
       });
       if (win) playSound('success');
       else playSound('error');
@@ -478,7 +553,8 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         getUITheme, canUseCommand, setPricingStrategy, floatingTexts,
         assignManager,
         openSocialPost, closeSocialPost, replyToSocialPost,
-        unreadCount, markAllAsRead, playSound
+        unreadCount, markAllAsRead, playSound,
+        activeMajorEvent: gameState.active_major_event
         , lang, setLanguage
     }}>
       {children}

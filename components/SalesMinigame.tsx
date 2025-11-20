@@ -1,13 +1,20 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { X, Zap, Briefcase, Building2, Rocket, Users, DollarSign, HeartCrack, Database, Crown, Lock } from 'lucide-react';
-import { SalesTarget, SalesCard, Employee, Role, CoFounderType, CoFounder, Phase } from '../types';
+import { SalesTarget, SalesCard, Employee, Role, CoFounderType, CoFounder, Phase, DifficultyModifier, MajorEvent } from '../types';
 import { getDealProfile, getDealGateMessage } from '../services/dealProfiles';
+import { calculateDealSuccess } from '../services/salesLogic';
+import { calculateMajorEventSuccess } from '../services/majorEvents';
 import { useGame } from '../context/GameContext';
 
 interface Props {
   onClose: () => void;
-  onComplete: (target: SalesTarget, win: boolean, sideEffects: { techDebt: number, sanityCost: number, cashCost: number }) => void;
+  onComplete: (
+    target: SalesTarget,
+    win: boolean,
+    sideEffects: { techDebt: number; sanityCost: number; cashCost: number },
+    metadata?: { successChance?: number; majorEventId?: string; customLabel?: string; isMajorEvent?: boolean }
+  ) => void;
   employees: Employee[];
   coFounder: CoFounder | null;
   sanity: number;
@@ -15,22 +22,56 @@ interface Props {
   directTarget?: SalesTarget;
   phase: Phase;
   pmfScore: number;
+  techDebt: number;
+  difficultyModifier?: DifficultyModifier;
+  majorEvent?: MajorEvent | null;
 }
 
-export const SalesMinigame: React.FC<Props> = ({ onClose, onComplete, employees, coFounder, sanity, cash, directTarget, phase, pmfScore }) => {
+export const SalesMinigame: React.FC<Props> = ({
+  onClose,
+  onComplete,
+  employees,
+  coFounder,
+  sanity,
+  cash,
+  directTarget,
+  phase,
+  pmfScore,
+  techDebt,
+  difficultyModifier,
+  majorEvent
+}) => {
   const { lang } = useGame();
-  const [step, setStep] = useState<'SELECT' | 'BATTLE'>('SELECT');
+  const [step, setStep] = useState<'SELECT' | 'BATTLE'>(majorEvent ? 'BATTLE' : 'SELECT');
   const [selectedTarget, setSelectedTarget] = useState<SalesTarget | null>(null);
+  const [activeEvent, setActiveEvent] = useState<MajorEvent | null>(majorEvent ?? null);
   const [clientResistance, setClientResistance] = useState(100);
   const [maxResistance, setMaxResistance] = useState(100);
   const [moves, setMoves] = useState(3);
   const [log, setLog] = useState<string[]>([]);
   const [activeDealMRR, setActiveDealMRR] = useState<number>(0);
+  const [successBonus, setSuccessBonus] = useState(0);
+  const resolutionRef = useRef(false);
   
   // Battle State to track accumulated penalties
   const [accumulatedDebt, setAccumulatedDebt] = useState(0);
   const [accumulatedSanityCost, setAccumulatedSanityCost] = useState(0);
   const [accumulatedCashCost, setAccumulatedCashCost] = useState(0);
+
+  useEffect(() => {
+      if (majorEvent) {
+          setActiveEvent(majorEvent);
+          setStep('BATTLE');
+          setSelectedTarget(null);
+          setClientResistance(majorEvent.resistance);
+          setMaxResistance(majorEvent.resistance);
+          setMoves(majorEvent.moves ?? 5);
+          setLog([`イベント開始: ${majorEvent.label}`]);
+          setActiveDealMRR(majorEvent.rewardMRR ?? 0);
+          setSuccessBonus(0);
+          resolutionRef.current = false;
+      }
+  }, [majorEvent]);
 
   const t = (key: string, fallback: string) => {
     const ja: Record<string, string> = {
@@ -80,14 +121,14 @@ export const SalesMinigame: React.FC<Props> = ({ onClose, onComplete, employees,
       const cards: SalesCard[] = [];
       
       // Base Cards (Founder)
-      cards.push({ id: 'base_1', name: "熱意", cost: 1, damage: 20, desc: "想いを伝える" });
-      cards.push({ id: 'base_2', name: "土下座", cost: 1, damage: 40, desc: "プライドを捨てる", costType: 'SANITY', costAmount: 10 });
+      cards.push({ id: 'base_1', name: "熱意", cost: 1, damage: 20, desc: "想いを伝える", successBonus: 8 });
+      cards.push({ id: 'base_2', name: "土下座", cost: 1, damage: 40, desc: "プライドを捨てる", costType: 'SANITY', costAmount: 10, successBonus: 15 });
 
       // Co-Founder Cards
       if (coFounder?.type === CoFounderType.HUSTLER) {
-          cards.push({ id: 'co_1', name: "ゴリ押し", cost: 1, damage: 35, desc: "NOと言わせない" });
+          cards.push({ id: 'co_1', name: "ゴリ押し", cost: 1, damage: 35, desc: "NOと言わせない", successBonus: 18 });
       } else if (coFounder?.type === CoFounderType.HACKER) {
-          cards.push({ id: 'co_2', name: "プロトタイプ", cost: 1, damage: 30, desc: "動くものを見せる" });
+          cards.push({ id: 'co_2', name: "プロトタイプ", cost: 1, damage: 30, desc: "動くものを見せる", successBonus: 12 });
       }
 
       // Employee Cards
@@ -96,21 +137,21 @@ export const SalesMinigame: React.FC<Props> = ({ onClose, onComplete, employees,
       const hasCS = employees.some(e => e.role === Role.CS);
 
       if (hasSalesMember) {
-          cards.push({ id: 'sales_1', name: "接待", cost: 1, damage: 50, desc: "高級焼肉で落とす", costType: 'CASH', costAmount: 50000 });
-          cards.push({ id: 'sales_2', name: "過剰な約束", cost: 1, damage: 80, desc: "「来月実装します！」", riskType: 'TECH_DEBT', riskAmount: 10 });
+          cards.push({ id: 'sales_1', name: "接待", cost: 1, damage: 50, desc: "高級焼肉で落とす", costType: 'CASH', costAmount: 50000, successBonus: 20 });
+          cards.push({ id: 'sales_2', name: "過剰な約束", cost: 1, damage: 80, desc: "「来月実装します！」", riskType: 'TECH_DEBT', riskAmount: 10, successBonus: 25 });
       }
 
       if (hasEngineer) {
-          cards.push({ id: 'eng_1', name: "ハリボテ", cost: 1, damage: 60, desc: "見た目だけのモック", riskType: 'TECH_DEBT', riskAmount: 5 });
+          cards.push({ id: 'eng_1', name: "ハリボテ", cost: 1, damage: 60, desc: "見た目だけのモック", riskType: 'TECH_DEBT', riskAmount: 5, successBonus: 10 });
       }
 
       if (hasCS) {
-           cards.push({ id: 'cs_1', name: "安心感", cost: 2, damage: 40, desc: "サポート体制をアピール" });
+           cards.push({ id: 'cs_1', name: "安心感", cost: 2, damage: 40, desc: "サポート体制をアピール", successBonus: 16 });
       }
 
       // Fill remaining with generic if low
       if (cards.length < 4) {
-          cards.push({ id: 'gen_1', name: "値引き", cost: 1, damage: 15, desc: "利益を削る" });
+          cards.push({ id: 'gen_1', name: "値引き", cost: 1, damage: 15, desc: "利益を削る", successBonus: 6 });
       }
 
       return cards;
@@ -135,6 +176,8 @@ export const SalesMinigame: React.FC<Props> = ({ onClose, onComplete, employees,
       setMoves(profile.moves);
       setLog([lang === 'ja' ? `商談開始。相手: ${profile.label} / 期待MRR ¥${profile.mrr.toLocaleString()}` : `Deal start: ${profile.label} / Expected MRR ¥${profile.mrr.toLocaleString()}`]);
       setStep('BATTLE');
+      setSuccessBonus(0);
+      resolutionRef.current = false;
       
       setAccumulatedDebt(0);
       setAccumulatedSanityCost(0);
@@ -157,36 +200,87 @@ export const SalesMinigame: React.FC<Props> = ({ onClose, onComplete, employees,
     // Apply Costs & Risks
     if (card.costType === 'CASH') setAccumulatedCashCost(p => p + (card.costAmount || 0));
     if (card.costType === 'SANITY') setAccumulatedSanityCost(p => p + (card.costAmount || 0));
-    if (card.riskType === 'TECH_DEBT') setAccumulatedDebt(p => p + (card.riskAmount || 0));
+    const debtDelta = card.riskType === 'TECH_DEBT' ? (card.riskAmount || 0) : 0;
+    const sanityDelta = card.costType === 'SANITY' ? (card.costAmount || 0) : 0;
+    const cashDelta = card.costType === 'CASH' ? (card.costAmount || 0) : 0;
+
+    setAccumulatedDebt(p => p + debtDelta);
+    setAccumulatedSanityCost(p => p + sanityDelta);
+    setAccumulatedCashCost(p => p + cashDelta);
+    setSuccessBonus(p => p + (card.successBonus || 0));
 
     const newResistance = Math.max(0, clientResistance - card.damage);
     setClientResistance(newResistance);
     setMoves(m => m - card.cost);
     setLog(prev => [`「${card.name}」を使用。抵抗値 -${card.damage}`, ...prev]);
 
-    if (newResistance === 0) {
-      setTimeout(() => onComplete(selectedTarget!, true, {
-          techDebt: accumulatedDebt + (card.riskAmount || 0),
-          sanityCost: accumulatedSanityCost + (card.costType === 'SANITY' ? (card.costAmount||0) : 0),
-          cashCost: accumulatedCashCost + (card.costType === 'CASH' ? (card.costAmount||0) : 0)
-      }), 1000);
-    } else if (moves - card.cost <= 0) {
-      setTimeout(() => onComplete(selectedTarget!, false, {
-          techDebt: accumulatedDebt + (card.riskAmount || 0),
-          sanityCost: accumulatedSanityCost + (card.costType === 'SANITY' ? (card.costAmount||0) : 0) + 10, // Lose Penalty
-          cashCost: accumulatedCashCost + (card.costType === 'CASH' ? (card.costAmount||0) : 0)
-      }), 1000);
+    const remainingMoves = moves - card.cost;
+    const nextDebt = accumulatedDebt + debtDelta;
+    const nextSanity = accumulatedSanityCost + sanityDelta;
+    const nextCash = accumulatedCashCost + cashDelta;
+
+    if (newResistance === 0 || remainingMoves <= 0) {
+      resolveDeal(remainingMoves <= 0, {
+        techDebt: nextDebt,
+        sanityCost: nextSanity,
+        cashCost: nextCash
+      });
     }
   };
 
-  const targetLabel = selectedTarget === 'FRIENDS' ? t('friends','Friends') : selectedTarget === 'STARTUP' ? t('startup','Startup') : selectedTarget === 'ENTERPRISE' ? t('enterprise','Enterprise') : t('whale','Whale');
+  const resolveDeal = (exhausted: boolean, costs: { techDebt: number; sanityCost: number; cashCost: number }) => {
+      if (resolutionRef.current) return;
+      const event = activeEvent;
+      const profile = selectedTarget ? getDealProfile(selectedTarget, phase) : null;
+      if (!event && (!selectedTarget || !profile)) return;
+      resolutionRef.current = true;
+
+      const salesCount = employees.filter(e => e.role === Role.SALES).length;
+      const productQuality = Math.max(0, 100 - techDebt);
+      const difficultyImpact = difficultyModifier && difficultyModifier.remainingWeeks > 0 ? difficultyModifier.modifier : 0;
+
+      let successChance = 0.5;
+      let metadata: { successChance?: number; majorEventId?: string; customLabel?: string; isMajorEvent?: boolean } = {};
+      if (event) {
+          successChance = calculateMajorEventSuccess(
+              event,
+              { pmf: pmfScore, salesCount, productQuality },
+              successBonus
+          );
+          metadata = { successChance, majorEventId: event.id, customLabel: event.label, isMajorEvent: true };
+      } else if (profile && selectedTarget) {
+          const baseResistance = Math.max(1, profile.resistance * (1 - difficultyImpact));
+          const modifierBase = (profile.successModifierBase || 0) + successBonus;
+          successChance = calculateDealSuccess(pmfScore, salesCount, productQuality, modifierBase, baseResistance);
+          metadata = { successChance };
+      }
+
+      const didWin = Math.random() < successChance;
+      const targetKey = selectedTarget || 'FRIENDS';
+
+      setTimeout(() => onComplete(targetKey, didWin, {
+          techDebt: costs.techDebt,
+          sanityCost: costs.sanityCost + (exhausted ? 10 : 0),
+          cashCost: costs.cashCost
+      }, metadata), 800);
+  };
+
+  const targetLabel = activeEvent
+    ? activeEvent.label
+    : selectedTarget === 'FRIENDS'
+    ? t('friends', 'Friends')
+    : selectedTarget === 'STARTUP'
+    ? t('startup', 'Startup')
+    : selectedTarget === 'ENTERPRISE'
+    ? t('enterprise', 'Enterprise')
+    : t('whale', 'Whale');
 
   const gateStatus = (target: SalesTarget) => {
       const msg = getDealGateMessage({ target, phase, pmfScore, hasSales });
       return { disabled: !!msg, reason: msg };
   };
 
-  if (step === 'SELECT') {
+  if (step === 'SELECT' && !activeEvent) {
       return (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 backdrop-blur-sm">
             <div className="bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 border border-indigo-700/40 rounded-2xl w-full max-w-5xl shadow-[0_20px_60px_rgba(0,0,0,0.55)] overflow-hidden p-6">
@@ -281,9 +375,9 @@ export const SalesMinigame: React.FC<Props> = ({ onClose, onComplete, employees,
       <div className="bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 border border-indigo-700/40 rounded-2xl w-full max-w-2xl shadow-[0_20px_60px_rgba(0,0,0,0.55)] overflow-hidden">
         {/* Header */}
         <div className="bg-slate-800/60 p-4 flex justify-between items-center border-b border-indigo-700/40">
-          <h3 className={`text-lg font-bold flex items-center ${selectedTarget === 'WHALE' ? 'text-yellow-300' : 'text-cyan-200'}`}>
-            {selectedTarget === 'WHALE' ? <Crown className="w-5 h-5 mr-2 text-yellow-300 animate-pulse" /> : <Briefcase className="w-5 h-5 mr-2 text-cyan-300" />}
-            商談中: {targetLabel} {activeDealMRR > 0 && <span className="text-xs text-slate-400 ml-2">MRR ¥{activeDealMRR.toLocaleString()}</span>}
+          <h3 className={`text-lg font-bold flex items-center ${selectedTarget === 'WHALE' || activeEvent ? 'text-yellow-300' : 'text-cyan-200'}`}>
+            {activeEvent ? <Crown className="w-5 h-5 mr-2 text-yellow-300 animate-pulse" /> : selectedTarget === 'WHALE' ? <Crown className="w-5 h-5 mr-2 text-yellow-300 animate-pulse" /> : <Briefcase className="w-5 h-5 mr-2 text-cyan-300" />}
+            {activeEvent ? `大型イベント: ${targetLabel}` : <>商談中: {targetLabel}</>} {activeDealMRR > 0 && <span className="text-xs text-slate-400 ml-2">MRR ¥{activeDealMRR.toLocaleString()}</span>}
           </h3>
           <button onClick={onClose} className="text-slate-400 hover:text-white">
             <X className="w-5 h-5" />

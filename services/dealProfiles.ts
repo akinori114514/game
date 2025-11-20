@@ -9,6 +9,9 @@ export interface DealProfile {
   minPhase: Phase;
   minPMF: number;
   requiresSales: boolean;
+  successModifierBase: number;
+  churnRate: number;
+  eventSuccessModifier?: number;
 }
 
 const phaseOrder: Record<Phase, number> = {
@@ -37,6 +40,8 @@ export const getDealProfile = (target: SalesTarget, phase: Phase): DealProfile |
         minPhase: Phase.SEED,
         minPMF: 0,
         requiresSales: false,
+        successModifierBase: 15,
+        churnRate: 0.01
       };
     }
     case 'STARTUP': {
@@ -49,6 +54,8 @@ export const getDealProfile = (target: SalesTarget, phase: Phase): DealProfile |
         minPhase: Phase.SEED,
         minPMF: 25,
         requiresSales: false,
+        successModifierBase: 10,
+        churnRate: 0.015
       };
     }
     case 'ENTERPRISE': {
@@ -62,6 +69,8 @@ export const getDealProfile = (target: SalesTarget, phase: Phase): DealProfile |
         minPhase: Phase.SERIES_A,
         minPMF: 50,
         requiresSales: true,
+        successModifierBase: 5,
+        churnRate: 0.02
       };
     }
     case 'WHALE': {
@@ -75,6 +84,8 @@ export const getDealProfile = (target: SalesTarget, phase: Phase): DealProfile |
         minPhase: Phase.SERIES_B,
         minPMF: 70,
         requiresSales: true,
+        successModifierBase: 0,
+        churnRate: 0.03
       };
     }
     default:

@@ -102,6 +102,7 @@ export interface SalesCard {
   desc: string;
   damage: number;
   cost: number; // AP Cost (Moves)
+  successBonus?: number;
   // Side Effects
   costType?: 'CASH' | 'SANITY';
   costAmount?: number;
@@ -140,6 +141,38 @@ export interface GameFlags {
   is_interview_unlocked: boolean;
   is_side_gig_unlocked: boolean;
   is_recruit_unlocked: boolean;
+  has_triggered_seed_event?: boolean;
+  has_triggered_series_a_event?: boolean;
+  series_b_event_count?: number;
+}
+
+export interface DifficultyModifier {
+  remainingWeeks: number;
+  modifier: number;
+}
+
+export type MajorEventType = 'BIG_DEAL' | 'BRAND' | 'RANDOM';
+
+export interface MajorEvent {
+  id: string;
+  label: string;
+  type: MajorEventType;
+  phase: Phase;
+  resistance: number;
+  rewardMRR?: number;
+  rewardBuffTurns?: number;
+  rewardBuffModifier?: number;
+  eventSuccessModifier: number;
+  failureCostSales?: number;
+  failureCostDev?: number;
+  favoredBy?: InvestorType[];
+  dislikedBy?: InvestorType[];
+  moves?: number;
+}
+
+export interface InvestorState {
+  type: InvestorType;
+  reputation: number;
 }
 
 // Narrative System Types
@@ -264,4 +297,8 @@ export interface GameState {
   // SNS / Timeline
   active_social_post: SocialPost | null;
   fired_employees_history: { name: string, role: Role, date: string }[];
+  investors: InvestorState[];
+  difficulty_modifier?: DifficultyModifier;
+  active_major_event: MajorEvent | null;
+  majorEventCountByPhase: Record<Phase, number>;
 }
