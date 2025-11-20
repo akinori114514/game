@@ -22,6 +22,7 @@ export const Dashboard = () => {
   } = useGame();
 
   const [isOrgChartOpen, setIsOrgChartOpen] = useState(false);
+  const [startLang, setStartLang] = useState<'ja' | 'en'>('ja');
   const logEndRef = useRef<HTMLDivElement>(null);
   const theme = getUITheme();
   const { is_decision_mode, is_machine_mode, is_game_over } = gameState;
@@ -35,21 +36,49 @@ export const Dashboard = () => {
 
   // Co-founder Selection Modal (Seed Start)
   if (!gameState.co_founder) {
+      const copy = startLang === 'ja' ? {
+          title: '共同創業者を選んでください',
+          desc: '2020年4月、東京は静まり返っている。誰と走るかで会社のリズムは変わる。',
+          hackerTitle: 'KEN（ハッカー）',
+          hackerDesc: '「コードで切り拓く。君は売ってこい。」',
+          hackerPerk: '効果: 開発スピード 1.5倍',
+          hustlerTitle: 'TAKASHI（ハスラー）',
+          hustlerDesc: '「口説くのは任せろ。数字を積もう。」',
+          hustlerPerk: '効果: 営業処理能力 1.5倍'
+      } : {
+          title: 'Choose your co-founder',
+          desc: 'April 2020. Tokyo is silent. Your partner will shape the rhythm of this company.',
+          hackerTitle: 'KEN [Hacker]',
+          hackerDesc: '"I build, you sell."',
+          hackerPerk: 'Perk: Dev speed x1.5',
+          hustlerTitle: 'TAKASHI [Hustler]',
+          hustlerDesc: '"I can sell ice to Eskimos."',
+          hustlerPerk: 'Perk: Sales capacity x1.5'
+      };
+
       return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-6 font-sans bg-gradient-to-br from-slate-950 via-slate-900 to-black">
             <div className="max-w-3xl w-full bg-black/70 border border-cyan-500/40 rounded-2xl p-8 shadow-[0_25px_60px_rgba(0,0,0,0.45)] backdrop-blur">
-                <h1 className="text-3xl font-black text-cyan-200 mb-2 tracking-tight">共同創業者を選んでください</h1>
-                <p className="text-sm text-slate-400 mb-8 leading-relaxed">2020年4月、東京は静まり返っている。誰と走るかで会社のリズムは変わる。</p>
+                <div className="flex justify-between items-center mb-3">
+                  <div>
+                    <h1 className="text-3xl font-black text-cyan-200 tracking-tight">{copy.title}</h1>
+                    <p className="text-sm text-slate-400 leading-relaxed mt-2">{copy.desc}</p>
+                  </div>
+                  <div className="flex gap-2 text-xs">
+                      <button onClick={() => setStartLang('ja')} className={`px-3 py-1 rounded border ${startLang === 'ja' ? 'border-cyan-400 text-cyan-200' : 'border-slate-700 text-slate-500'}`}>日本語</button>
+                      <button onClick={() => setStartLang('en')} className={`px-3 py-1 rounded border ${startLang === 'en' ? 'border-cyan-400 text-cyan-200' : 'border-slate-700 text-slate-500'}`}>English</button>
+                  </div>
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <button onClick={() => chooseCoFounder(CoFounderType.HACKER)} className="border border-slate-700 bg-slate-900/60 hover:border-cyan-400 hover:-translate-y-1 transition-all rounded-xl p-6 text-left">
-                        <div className="text-lg font-bold text-cyan-200">KEN（ハッカー）</div>
-                        <div className="text-xs text-slate-400 mt-2">「コードで切り拓く。君は売ってこい。」</div>
-                        <div className="mt-4 text-xs text-cyan-300">効果: 開発スピード 1.5倍</div>
+                        <div className="text-lg font-bold text-cyan-200">{copy.hackerTitle}</div>
+                        <div className="text-xs text-slate-400 mt-2">{copy.hackerDesc}</div>
+                        <div className="mt-4 text-xs text-cyan-300">{copy.hackerPerk}</div>
                     </button>
                     <button onClick={() => chooseCoFounder(CoFounderType.HUSTLER)} className="border border-slate-700 bg-slate-900/60 hover:border-amber-400 hover:-translate-y-1 transition-all rounded-xl p-6 text-left">
-                        <div className="text-lg font-bold text-amber-200">TAKASHI（ハスラー）</div>
-                        <div className="text-xs text-slate-400 mt-2">「口説くのは任せろ。数字を積もう。」</div>
-                        <div className="mt-4 text-xs text-amber-300">効果: 営業処理能力 1.5倍</div>
+                        <div className="text-lg font-bold text-amber-200">{copy.hustlerTitle}</div>
+                        <div className="text-xs text-slate-400 mt-2">{copy.hustlerDesc}</div>
+                        <div className="mt-4 text-xs text-amber-300">{copy.hustlerPerk}</div>
                     </button>
                 </div>
             </div>
