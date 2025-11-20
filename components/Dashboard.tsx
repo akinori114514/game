@@ -3,7 +3,6 @@ import { useGame } from '../context/GameContext';
 import { Role, Phase, CoFounderType, InvestorType, PricingStrategy } from '../types';
 import { Briefcase, UserPlus, Zap, ShieldAlert, MessageCircle, Landmark, Coffee, Lock, Trash2, BarChart3, Crown, Target, Network, Clock, Terminal, ArrowRight, TrendingUp, DollarSign, Users, Activity } from 'lucide-react';
 import { SalesMinigame } from './SalesMinigame';
-import { PipelineView } from './PipelineView';
 import { NarrativeModal } from './NarrativeModal';
 import { EndingScreen } from './EndingScreen';
 import { HeavyButton } from './HeavyButton';
@@ -280,13 +279,6 @@ export const Dashboard = () => {
                   </div>
               </div>
               
-              {/* Pipeline Viz (Only Series A+) */}
-              {gameState.phase !== Phase.SEED && (
-                  <div className={`border-t ${theme.border} pt-6 mt-6`}>
-                       <PipelineView />
-                  </div>
-              )}
-
               {/* Turn Button */}
               <div className="mt-8">
                    {is_decision_mode ? (

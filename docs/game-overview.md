@@ -27,7 +27,6 @@
 - `tech_debt`: 成約率・解約率に影響。副業や一部カードで増加。
 - `family_relationship`: 毎ターン減少（Machine Mode 中は大きく減る）。FAMILY DM のトーンに反映。
 - `flags`: チュートリアル解放、補助金取得、マーケット残週、PMF 凍結（副業した週は営業不可）など。
-- `pipeline_metrics`: 生成リード、損失、成約、CS キャパ、ゴールデンリード、インシデント数などを UI 表示用に保持。
 - `investor_type`: BLITZ/PRODUCT/FAMILY (Seed 後に選択)。資金注入と OS の制約（PRODUCT は SALES 禁止、FAMILY は FIRE 禁止）。
 - `co_founder`: HACKER/HUSTLER で技術/営業ブースト。
 
@@ -61,7 +60,7 @@
 - Machine Mode では通知がターミナル風ログに変化。
 
 ## UI と補足
-- Dashboard 左: ログタイムライン。右: キャッシュ/MRR/SANITY とアクション、チーム一覧、PipelineView。
+- Dashboard 左: ログタイムライン。右: キャッシュ/MRR/SANITY とアクション、チーム一覧。
 - Smartphone: 通知の既読管理、Slack ログ、FAMILY DM、Social を整理。
 - OrgChart: ドラッグ＆ドロップで指揮系統を並べる（assignManager 実装済み、循環は自動防止）。
 - VC助言: `services/geminiService.ts` が投資家タイプ/成長率/ランウェイなどの数値から定型アドバイスを返す。外部API不要。

@@ -106,15 +106,6 @@ export const useGameEngine = (
                 nextState.hiring_friction_weeks -= 1;
             }
     
-            let marketingEfficiency = 1.0;
-            if (nextState.investor_type === InvestorType.BLITZ) {
-              marketingEfficiency = 1.0 + (nextState.marketing_budget / 5000000);
-            }
-            
-            if (nextState.market_trend === MarketTrend.COMPETITOR_FUD) marketingEfficiency *= 0.7;
-            
-            const budgetLeads = Math.floor((nextState.marketing_budget / 10000) * marketingEfficiency * productivityMultiplier);
-            
             const strategy = nextState.pricing_strategy;
             const phaseMultiplier = nextState.phase === Phase.SEED ? 1 : nextState.phase === Phase.SERIES_A ? 1.6 : 2.4;
             let arpu = 50000 * phaseMultiplier;
@@ -134,6 +125,7 @@ export const useGameEngine = (
             if (strategy === PricingStrategy.BLITZ) virality *= 2.0;
             if (nextState.market_trend === MarketTrend.SAAS_BOOM) virality *= 1.5;
     
+            const budgetLeads = 0;
             const organicLeads = Math.floor(currentCustomers * virality);
             const totalLeads = nextState.leads + budgetLeads + organicLeads;
     
@@ -226,19 +218,6 @@ export const useGameEngine = (
             nextState.actionPoints = nextState.maxActionPoints;
             nextState = applyMRRUpdate(nextState);
 
-            nextState.pipeline_metrics = {
-                leads_generated: budgetLeads,
-                sales_capacity: actualSalesCapacity,
-                leads_processed: processedLeads,
-                leads_lost: leadsLost,
-                new_deals: newDeals,
-                cs_capacity: csCapacity,
-                required_cs: totalCustomersAfterSales,
-                active_incidents: Math.random() > 0.8 ? 1 : 0,
-                golden_leads_active: Math.random() > 0.85,
-                organic_growth_factor: virality
-            };
-    
             const triggeredEvent = checkTriggers(nextState);
             if (triggeredEvent) {
                 nextState.active_event = triggeredEvent;

@@ -96,18 +96,6 @@ const InitialState: GameState = {
     has_triggered_series_a_event: false,
     series_b_event_count: 0
   },
-  pipeline_metrics: {
-    leads_generated: 0,
-    sales_capacity: 0,
-    leads_processed: 0,
-    leads_lost: 0,
-    new_deals: 0,
-    cs_capacity: 0,
-    required_cs: 0,
-    active_incidents: 0,
-    golden_leads_active: false,
-    organic_growth_factor: 0
-  },
   active_event: null,
   philosophy: { ruthlessness: 0, craftsmanship: 0, dishonesty: 0, loneliness: 0 },
   family_relationship: 90,

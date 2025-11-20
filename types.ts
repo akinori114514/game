@@ -110,19 +110,6 @@ export interface SalesCard {
   riskAmount?: number;
 }
 
-export interface PipelineMetrics {
-  leads_generated: number;
-  sales_capacity: number;
-  leads_processed: number;
-  leads_lost: number;
-  new_deals: number;
-  cs_capacity: number;
-  required_cs: number;
-  active_incidents: number;
-  golden_leads_active: boolean;
-  organic_growth_factor: number; // Virality based on PMF
-}
-
 export interface GameFlags {
   has_received_subsidy: boolean;
   cto_left: boolean;
@@ -284,7 +271,6 @@ export interface GameState {
   market_trend: MarketTrend;
 
   flags: GameFlags;
-  pipeline_metrics?: PipelineMetrics;
   active_event: NarrativeEvent | null; // If set, modal blocks game
   
   // New Systems
