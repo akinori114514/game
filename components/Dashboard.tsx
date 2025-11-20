@@ -36,20 +36,20 @@ export const Dashboard = () => {
   // Co-founder Selection Modal (Seed Start)
   if (!gameState.co_founder) {
       return (
-        <div className="fixed inset-0 bg-slate-950 z-50 flex items-center justify-center p-6 font-mono">
-            <div className="max-w-4xl w-full bg-black border-2 border-green-800 p-8 shadow-[0_0_50px_rgba(0,255,0,0.1)]">
-                <h1 className="text-3xl font-bold text-green-500 mb-4 glitch-text">INIT_STARTUP_SEQUENCE</h1>
-                <p className="text-green-700 mb-8">2020.04.01 // STATE_OF_EMERGENCY // TOKYO<br/>Select your partner.</p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <button onClick={() => chooseCoFounder(CoFounderType.HACKER)} className="border border-green-900 hover:border-green-500 p-6 text-left group transition-all hover:bg-green-900/20">
-                        <div className="text-xl font-bold text-green-400 group-hover:text-green-300">KEN [HACKER]</div>
-                        <div className="text-xs text-green-700 mt-2">"Code is law. I build, you sell."</div>
-                        <div className="mt-4 text-green-800 text-sm">Perk: Tech Dev Speed x1.5</div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 font-sans bg-gradient-to-br from-slate-950 via-slate-900 to-black">
+            <div className="max-w-3xl w-full bg-black/70 border border-cyan-500/40 rounded-2xl p-8 shadow-[0_25px_60px_rgba(0,0,0,0.45)] backdrop-blur">
+                <h1 className="text-3xl font-black text-cyan-200 mb-2 tracking-tight">共同創業者を選んでください</h1>
+                <p className="text-sm text-slate-400 mb-8 leading-relaxed">2020年4月、東京は静まり返っている。誰と走るかで会社のリズムは変わる。</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <button onClick={() => chooseCoFounder(CoFounderType.HACKER)} className="border border-slate-700 bg-slate-900/60 hover:border-cyan-400 hover:-translate-y-1 transition-all rounded-xl p-6 text-left">
+                        <div className="text-lg font-bold text-cyan-200">KEN（ハッカー）</div>
+                        <div className="text-xs text-slate-400 mt-2">「コードで切り拓く。君は売ってこい。」</div>
+                        <div className="mt-4 text-xs text-cyan-300">効果: 開発スピード 1.5倍</div>
                     </button>
-                    <button onClick={() => chooseCoFounder(CoFounderType.HUSTLER)} className="border border-green-900 hover:border-green-500 p-6 text-left group transition-all hover:bg-green-900/20">
-                        <div className="text-xl font-bold text-green-400 group-hover:text-green-300">TAKASHI [HUSTLER]</div>
-                        <div className="text-xs text-green-700 mt-2">"I can sell ice to eskimos."</div>
-                        <div className="mt-4 text-green-800 text-sm">Perk: Sales Capacity x1.5</div>
+                    <button onClick={() => chooseCoFounder(CoFounderType.HUSTLER)} className="border border-slate-700 bg-slate-900/60 hover:border-amber-400 hover:-translate-y-1 transition-all rounded-xl p-6 text-left">
+                        <div className="text-lg font-bold text-amber-200">TAKASHI（ハスラー）</div>
+                        <div className="text-xs text-slate-400 mt-2">「口説くのは任せろ。数字を積もう。」</div>
+                        <div className="mt-4 text-xs text-amber-300">効果: 営業処理能力 1.5倍</div>
                     </button>
                 </div>
             </div>
@@ -148,14 +148,14 @@ export const Dashboard = () => {
 
           {/* Command Grid */}
           <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
-              <h3 className="text-xs font-bold opacity-50 uppercase mb-4 tracking-widest">ACTIONS</h3>
+              <h3 className="text-xs font-bold opacity-70 mb-4 tracking-widest text-slate-300">アクション</h3>
               
               <div className="grid grid-cols-2 gap-3 mb-6">
                   {/* 1. CUSTOMER INTERVIEW (Always Open) */}
                   <button onClick={doCustomerInterview} className={`p-4 border ${theme.border} hover:bg-white/5 transition-all text-left group`}>
                       <div className="flex items-center gap-2 mb-2">
                           <MessageCircle size={16} className="text-emerald-400"/>
-                          <span className="font-bold text-sm">Interview</span>
+                          <span className="font-bold text-sm">顧客インタビュー</span>
                       </div>
                       <div className="text-xs opacity-50 group-hover:opacity-100">Gain PMF. Cost: ¥5万</div>
                   </button>
@@ -165,7 +165,7 @@ export const Dashboard = () => {
                       <button onClick={doClientWork} className={`p-4 border ${theme.border} hover:bg-white/5 transition-all text-left group`}>
                           <div className="flex items-center gap-2 mb-2">
                               <Coffee size={16} className="text-yellow-400"/>
-                              <span className="font-bold text-sm">Side Gig</span>
+                              <span className="font-bold text-sm">副業受託</span>
                           </div>
                           <div className="text-xs opacity-50 group-hover:opacity-100">Cash +¥60万. Tech Debt +5.</div>
                       </button>
@@ -175,13 +175,20 @@ export const Dashboard = () => {
 
                   {/* 3. RECRUIT (Unlock W6) */}
                   {canUseCommand('RECRUIT') ? (
-                      <button onClick={() => hireEmployee(Role.ENGINEER)} className={`p-4 border ${theme.border} hover:bg-white/5 transition-all text-left group`}>
-                          <div className="flex items-center gap-2 mb-2">
-                              <UserPlus size={16} className="text-blue-400"/>
-                              <span className="font-bold text-sm">Recruit Eng</span>
-                          </div>
-                          <div className="text-xs opacity-50 group-hover:opacity-100">Cost: ¥30万 + Monthly</div>
-                      </button>
+                      <div className="grid grid-cols-1 gap-2">
+                        <div className="text-[10px] text-slate-400">採用（初期費用 ¥30万）</div>
+                        <div className="grid grid-cols-3 gap-2">
+                          <button onClick={() => hireEmployee(Role.ENGINEER)} className={`p-3 border ${theme.border} hover:bg-white/5 transition-all text-left text-xs`}>
+                              エンジニア
+                          </button>
+                          <button onClick={() => hireEmployee(Role.SALES)} className={`p-3 border ${theme.border} hover:bg-white/5 transition-all text-left text-xs`}>
+                              営業
+                          </button>
+                          <button onClick={() => hireEmployee(Role.CS)} className={`p-3 border ${theme.border} hover:bg-white/5 transition-all text-left text-xs`}>
+                              CS
+                          </button>
+                        </div>
+                      </div>
                   ) : (
                       <div className="p-4 border border-white/5 opacity-30 flex items-center justify-center"><Lock size={16}/></div>
                   )}
@@ -191,9 +198,9 @@ export const Dashboard = () => {
                       <button onClick={() => startSalesPitch()} className={`p-4 border ${theme.border} hover:bg-white/5 transition-all text-left group`}>
                           <div className="flex items-center gap-2 mb-2">
                               <Briefcase size={16} className="text-indigo-400"/>
-                              <span className="font-bold text-sm">Sales Pitch</span>
+                              <span className="font-bold text-sm">営業カード</span>
                           </div>
-                          <div className="text-xs opacity-50 group-hover:opacity-100">Get MRR. Risk Sanity.</div>
+                          <div className="text-xs opacity-50 group-hover:opacity-100">MRR獲得。SAN消耗リスク。</div>
                       </button>
                   ) : (
                       <div className="p-4 border border-white/5 opacity-30 flex items-center justify-center"><Lock size={16}/></div>
