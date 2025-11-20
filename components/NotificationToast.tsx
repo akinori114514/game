@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useGame } from '../context/GameContext';
 import { MessageSquare, AlertTriangle, Terminal, Globe, Server, Hash, HeartCrack } from 'lucide-react';
 import { GameNotification, NotificationType } from '../types';
@@ -14,6 +14,25 @@ export const NotificationToast = () => {
   const { gameState, openSocialPost } = useGame();
   const { notifications, is_machine_mode, is_decision_mode } = gameState;
   const [activeToasts, setActiveToasts] = useState<ToastEntry[]>([]);
+  const [dragOffsets, setDragOffsets] = useState<Record<string, number>>({});
+  const touchStarts = useRef<Record<string, number>>({});
+
+  const removeToast = (id: string) => {
+    setActiveToasts(prev => prev.filter(entry => entry.note.id !== id));
+  };
+
+  const finalizeSwipe = (id: string) => {
+    const offset = dragOffsets[id] || 0;
+    if (Math.abs(offset) > 80) {
+        removeToast(id);
+    }
+    setDragOffsets(prev => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+    });
+    delete touchStarts.current[id];
+  };
 
   useEffect(() => {
     if (notifications.length === 0) return;
@@ -71,7 +90,7 @@ export const NotificationToast = () => {
   };
 
   return (
-    <div className="fixed bottom-6 right-6 z-[60] flex flex-col gap-3 pointer-events-none">
+    <div className="fixed top-16 right-6 z-[60] flex flex-col gap-3 pointer-events-none">
       <style>{`
         @keyframes shake {
           0%, 100% { transform: translateX(0); }
@@ -89,6 +108,7 @@ export const NotificationToast = () => {
                     openSocialPost(entry.note.relatedPostId);
                 }
             }}
+            style={{ transform: `translateX(${dragOffsets[entry.note.id] || 0}px)` }}
             className={`
                 pointer-events-auto
                 w-80 p-4 rounded-lg shadow-2xl backdrop-blur-xl border transition-all duration-500 cursor-pointer
@@ -97,7 +117,28 @@ export const NotificationToast = () => {
                 hover:scale-105 active:scale-95
             `}
         >
-            <div className="flex items-start gap-3">
+            <div 
+                className="flex items-start gap-3"
+                onTouchStart={(event) => {
+                    touchStarts.current[entry.note.id] = event.touches[0].clientX;
+                }}
+                onTouchMove={(event) => {
+                    const start = touchStarts.current[entry.note.id] ?? event.touches[0].clientX;
+                    const delta = event.touches[0].clientX - start;
+                    setDragOffsets(prev => ({ ...prev, [entry.note.id]: delta }));
+                }}
+                onTouchEnd={() => finalizeSwipe(entry.note.id)}
+                onMouseDown={(event) => {
+                    touchStarts.current[entry.note.id] = event.clientX;
+                }}
+                onMouseMove={(event) => {
+                    if (touchStarts.current[entry.note.id] !== undefined) {
+                        const delta = event.clientX - touchStarts.current[entry.note.id];
+                        setDragOffsets(prev => ({ ...prev, [entry.note.id]: delta }));
+                    }
+                }}
+                onMouseUp={() => finalizeSwipe(entry.note.id)}
+            >
                 <div className={`p-2 rounded-lg ${
                      entry.note.tone === 'ROBOTIC' ? 'bg-green-900/30' :
                      entry.note.tone === 'FAMILY_ANGRY' ? 'bg-red-700' :
