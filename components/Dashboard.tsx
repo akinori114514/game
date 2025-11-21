@@ -296,7 +296,7 @@ export const Dashboard = () => {
                   {canUseCommand('RECRUIT') ? (
                       <div className="grid grid-cols-1 gap-2">
                         <div className="text-[10px] text-slate-400">採用（初期費用 ¥30万）</div>
-                        <div className="grid grid-cols-3 gap-2">
+                        <div className="grid grid-cols-4 gap-2">
                           <button onClick={() => hireEmployee(Role.ENGINEER)} className={`p-3 border ${theme.border} hover:bg-white/5 transition-all text-left text-xs`}>
                               エンジニア
                           </button>
@@ -305,6 +305,9 @@ export const Dashboard = () => {
                           </button>
                           <button onClick={() => hireEmployee(Role.CS)} className={`p-3 border ${theme.border} hover:bg-white/5 transition-all text-left text-xs`}>
                               CS
+                          </button>
+                          <button onClick={() => hireEmployee(Role.MARKETER)} className={`p-3 border ${theme.border} hover:bg-white/5 transition-all text-left text-xs`}>
+                              マーケター
                           </button>
                         </div>
                       </div>
