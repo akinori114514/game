@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { X, Zap, Briefcase, Building2, Rocket, Users, DollarSign, HeartCrack, Database, Crown, Lock } from 'lucide-react';
-import { SalesTarget, SalesCard, Employee, Role, CoFounderType, CoFounder, Phase, DifficultyModifier, MajorEvent } from '../types';
+import { SalesTarget, SalesCard, Employee, Role, CoFounderType, CoFounder, Phase, DifficultyModifier, MajorEvent, ProductPhase } from '../types';
 import { getDealProfile, getDealGateMessage } from '../services/dealProfiles';
 import { calculateDealSuccess } from '../services/salesLogic';
 import { calculateMajorEventSuccess } from '../services/majorEvents';
@@ -26,6 +26,9 @@ interface Props {
   difficultyModifier?: DifficultyModifier;
   majorEvent?: MajorEvent | null;
   seedMissionsLeft?: number;
+  productQuality?: number;
+  averageUnitPrice?: number;
+  productPhase?: ProductPhase;
 }
 
 export const SalesMinigame: React.FC<Props> = ({
@@ -41,7 +44,10 @@ export const SalesMinigame: React.FC<Props> = ({
   techDebt,
   difficultyModifier,
   majorEvent,
-  seedMissionsLeft = 0
+  seedMissionsLeft = 0,
+  productQuality,
+  averageUnitPrice,
+  productPhase
 }) => {
   const { lang } = useGame();
   const [step, setStep] = useState<'SELECT' | 'BATTLE'>(majorEvent ? 'BATTLE' : 'SELECT');
@@ -57,20 +63,20 @@ export const SalesMinigame: React.FC<Props> = ({
   const seedBonus = phase === Phase.SEED && seedMissionsLeft > 0 ? 20 : 0;
   const previewChance = useMemo(() => {
       const salesCount = employees.filter(e => e.role === Role.SALES).length;
-      const productQuality = Math.max(0, 100 - techDebt);
+      const productQualityScore = productQuality ?? Math.max(0, 100 - techDebt);
       const difficultyImpact = difficultyModifier && difficultyModifier.remainingWeeks > 0 ? difficultyModifier.modifier : 0;
       if (activeEvent) {
-          return calculateMajorEventSuccess(activeEvent, { pmf: pmfScore, salesCount, productQuality }, successBonus);
+          return calculateMajorEventSuccess(activeEvent, { pmf: pmfScore, salesCount, productQuality: productQualityScore }, successBonus);
       }
       if (selectedTarget) {
           const profile = getDealProfile(selectedTarget, phase);
           if (!profile) return null;
           const baseResistance = Math.max(1, profile.resistance * (1 - difficultyImpact));
           const modifierBase = (profile.successModifierBase || 0) + successBonus + seedBonus;
-          return calculateDealSuccess(pmfScore, salesCount, productQuality, modifierBase, baseResistance);
+          return calculateDealSuccess(pmfScore, salesCount, productQualityScore, modifierBase, baseResistance);
       }
       return null;
-  }, [activeEvent, selectedTarget, employees, techDebt, difficultyModifier, pmfScore, phase, successBonus, seedBonus]);
+  }, [activeEvent, selectedTarget, employees, techDebt, difficultyModifier, pmfScore, phase, successBonus, seedBonus, productQuality]);
   
   // Battle State to track accumulated penalties
   const [accumulatedDebt, setAccumulatedDebt] = useState(0);
@@ -257,7 +263,7 @@ export const SalesMinigame: React.FC<Props> = ({
       resolutionRef.current = true;
 
       const salesCount = employees.filter(e => e.role === Role.SALES).length;
-      const productQuality = Math.max(0, 100 - techDebt);
+      const productQualityScore = productQuality ?? Math.max(0, 100 - techDebt);
       const difficultyImpact = difficultyModifier && difficultyModifier.remainingWeeks > 0 ? difficultyModifier.modifier : 0;
 
       let successChance = 0.5;
@@ -265,14 +271,14 @@ export const SalesMinigame: React.FC<Props> = ({
       if (event) {
           successChance = calculateMajorEventSuccess(
               event,
-              { pmf: pmfScore, salesCount, productQuality },
+              { pmf: pmfScore, salesCount, productQuality: productQualityScore },
               successBonus
           );
           metadata = { successChance, majorEventId: event.id, customLabel: event.label, isMajorEvent: true };
       } else if (profile && selectedTarget) {
           const baseResistance = Math.max(1, profile.resistance * (1 - difficultyImpact));
           const modifierBase = (profile.successModifierBase || 0) + successBonus + seedBonus;
-          successChance = calculateDealSuccess(pmfScore, salesCount, productQuality, modifierBase, baseResistance);
+          successChance = calculateDealSuccess(pmfScore, salesCount, productQualityScore, modifierBase, baseResistance);
           metadata = { successChance };
       }
 
@@ -311,6 +317,23 @@ export const SalesMinigame: React.FC<Props> = ({
                       <p className="text-xs text-slate-400 mt-1">{t('selectDesc','Unlocks depend on phase/PMF/sales team. Higher tiers pay more but resist more.')}</p>
                     </div>
                     <button onClick={onClose}><X className="text-slate-400" /></button>
+                </div>
+                <div className="grid grid-cols-3 gap-3 mb-6 text-xs">
+                    <div className="p-3 border border-slate-700 rounded bg-slate-900/60">
+                        <div className="text-[10px] text-slate-400 uppercase">PMF</div>
+                        <div className="text-lg font-mono text-emerald-300">{pmfScore.toFixed(0)}</div>
+                        <div className="text-[10px] text-slate-500">フェーズ: {productPhase || '---'}</div>
+                    </div>
+                    <div className="p-3 border border-slate-700 rounded bg-slate-900/60">
+                        <div className="text-[10px] text-slate-400 uppercase">品質</div>
+                        <div className="text-lg font-mono text-cyan-200">{(productQuality ?? Math.max(0, 100 - techDebt)).toFixed(0)}</div>
+                        <div className="text-[10px] text-slate-500">TechDebt {techDebt}</div>
+                    </div>
+                    <div className="p-3 border border-slate-700 rounded bg-slate-900/60">
+                        <div className="text-[10px] text-slate-400 uppercase">平均単価</div>
+                        <div className="text-lg font-mono text-amber-200">¥{((averageUnitPrice ?? 0)/10000).toFixed(1)}万</div>
+                        <div className="text-[10px] text-slate-500">営業/CSに左右</div>
+                    </div>
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -407,6 +430,24 @@ export const SalesMinigame: React.FC<Props> = ({
 
         {/* Battle Area */}
         <div className="p-8 flex flex-col items-center justify-center space-y-8 bg-gradient-to-b from-slate-950/80 to-slate-900">
+          
+          <div className="w-full grid grid-cols-3 gap-3 text-xs">
+            <div className="p-3 border border-slate-800 rounded bg-slate-900/60">
+              <div className="text-[10px] text-slate-400 uppercase">PMF</div>
+              <div className="text-lg font-mono text-emerald-300">{pmfScore.toFixed(0)}</div>
+              <div className="text-[10px] text-slate-500">フェーズ: {productPhase || '---'}</div>
+            </div>
+            <div className="p-3 border border-slate-800 rounded bg-slate-900/60">
+              <div className="text-[10px] text-slate-400 uppercase">品質</div>
+              <div className="text-lg font-mono text-cyan-200">{(productQuality ?? Math.max(0, 100 - techDebt)).toFixed(0)}</div>
+              <div className="text-[10px] text-slate-500">TechDebt {techDebt}</div>
+            </div>
+            <div className="p-3 border border-slate-800 rounded bg-slate-900/60">
+              <div className="text-[10px] text-slate-400 uppercase">平均単価</div>
+              <div className="text-lg font-mono text-amber-200">¥{((averageUnitPrice ?? 0)/10000).toFixed(1)}万</div>
+              <div className="text-[10px] text-slate-500">営業/CSに左右</div>
+            </div>
+          </div>
           
           {/* Client Status */}
           <div className="w-full max-w-md text-center">

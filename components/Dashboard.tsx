@@ -7,10 +7,13 @@ import { NarrativeModal } from './NarrativeModal';
 import { EndingScreen } from './EndingScreen';
 import { HeavyButton } from './HeavyButton';
 import { SocialFeedModal } from './SocialFeedModal'; 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { OrgChart } from './OrgChart';
 import { Smartphone } from './Smartphone';
 import { NotificationToast } from './NotificationToast';
+import { FinancialsModal } from './FinancialsModal';
+import { ProductModal } from './ProductModal';
+import { getMRRBreakdown } from '../services/revenueLogic';
 
 export const Dashboard = () => {
   const { 
@@ -22,6 +25,8 @@ export const Dashboard = () => {
   } = useGame();
 
   const [isOrgChartOpen, setIsOrgChartOpen] = useState(false);
+  const [showFinancials, setShowFinancials] = useState(false);
+  const [showProductPanel, setShowProductPanel] = useState(false);
   const logEndRef = useRef<HTMLDivElement>(null);
   const theme = getUITheme();
   const { is_decision_mode, is_machine_mode, is_game_over } = gameState;
@@ -78,6 +83,8 @@ export const Dashboard = () => {
       return dict[key] || fallback;
   };
 
+  const mrrBreakdown = useMemo(() => getMRRBreakdown(gameState), [gameState]);
+
   if (is_game_over) return <EndingScreen state={gameState} />;
 
   // Co-founder Selection Modal (Seed Start)
@@ -126,10 +133,12 @@ export const Dashboard = () => {
       {is_decision_mode && <div className="pointer-events-none fixed inset-0 z-10 bg-[radial-gradient(circle,transparent_50%,black_100%)] animate-pulse"></div>}
       
       {/* Modals */}
-      {isSalesModalOpen && <SalesMinigame onClose={closeSalesModal} onComplete={completeSalesPitch} employees={gameState.employees} coFounder={gameState.co_founder} sanity={gameState.sanity} cash={gameState.cash} directTarget={salesModalTarget} phase={gameState.phase} pmfScore={gameState.pmf_score} techDebt={gameState.tech_debt} difficultyModifier={gameState.difficulty_modifier} majorEvent={gameState.active_major_event} seedMissionsLeft={gameState.seedInitialSalesMissionsLeft} />}
+      {isSalesModalOpen && <SalesMinigame onClose={closeSalesModal} onComplete={completeSalesPitch} employees={gameState.employees} coFounder={gameState.co_founder} sanity={gameState.sanity} cash={gameState.cash} directTarget={salesModalTarget} phase={gameState.phase} pmfScore={gameState.pmf_score} techDebt={gameState.tech_debt} difficultyModifier={gameState.difficulty_modifier} majorEvent={gameState.active_major_event} seedMissionsLeft={gameState.seedInitialSalesMissionsLeft} productQuality={gameState.productQuality} averageUnitPrice={gameState.averageUnitPrice} productPhase={gameState.productPhase} />}
       {gameState.active_event && <NarrativeModal event={gameState.active_event} onResolve={resolveEvent} />}
       {isOrgChartOpen && <OrgChart onClose={() => setIsOrgChartOpen(false)} />}
       {gameState.active_social_post && <SocialFeedModal />}
+      {showFinancials && <FinancialsModal monthlyBurn={monthlyBurn} onClose={() => setShowFinancials(false)} />}
+      {showProductPanel && <ProductModal onClose={() => setShowProductPanel(false)} />}
 
       {/* === LEFT PANEL: NARRATIVE TIMELINE (60%) === */}
       <div className={`w-[60%] h-full flex flex-col border-r ${theme.border} relative`}>
@@ -166,6 +175,23 @@ export const Dashboard = () => {
           
           {/* Status Deck */}
           <div className={`p-6 border-b ${theme.border}`}>
+              <div className="flex items-center justify-between mb-4 gap-2">
+                  <div className="text-xs font-bold opacity-70 tracking-widest">STATUS</div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setShowProductPanel(true)}
+                      className="text-xs px-3 py-2 border border-white/10 bg-white/5 hover:bg-white/10 rounded flex items-center gap-1"
+                    >
+                      <Target size={12} /> プロダクト
+                    </button>
+                    <button
+                      onClick={() => setShowFinancials(true)}
+                      className="text-xs px-3 py-2 border border-white/10 bg-white/5 hover:bg-white/10 rounded flex items-center gap-1"
+                    >
+                      <DollarSign size={12} /> 財務
+                    </button>
+                  </div>
+              </div>
               <div className="grid grid-cols-2 gap-4 mb-6">
                   <div className="p-4 bg-black/20 border border-white/5 rounded">
                       <div className="text-xs opacity-50 uppercase mb-1">Cash Reserves</div>
@@ -196,6 +222,33 @@ export const Dashboard = () => {
                         {gameState.actionPoints <= 0 && (
                           <span className="text-xs text-red-400">今週の行動ポイントはありません</span>
                         )}
+                      </div>
+                  </div>
+                  <div className="col-span-2 grid grid-cols-3 gap-3">
+                      <div className="p-3 bg-black/20 border border-white/5 rounded">
+                          <div className="text-[10px] opacity-60 uppercase mb-1">PMF</div>
+                          <div className="text-xl font-mono font-bold">{gameState.pmf_score.toFixed(0)}</div>
+                          <div className="text-[11px] text-emerald-300">Δ {((gameState.lastPmfDelta ?? 0) >= 0 ? '+' : '')}{(gameState.lastPmfDelta ?? 0).toFixed(1)}</div>
+                      </div>
+                      <div className="p-3 bg-black/20 border border-white/5 rounded">
+                          <div className="text-[10px] opacity-60 uppercase mb-1">品質</div>
+                          <div className="text-xl font-mono font-bold">{(gameState.productQuality ?? Math.max(0, 100 - gameState.tech_debt)).toFixed(0)}</div>
+                          <div className="text-[11px] text-slate-400">TechDebt {gameState.tech_debt}</div>
+                      </div>
+                      <div className="p-3 bg-black/20 border border-white/5 rounded">
+                          <div className="text-[10px] opacity-60 uppercase mb-1">平均単価</div>
+                          <div className="text-xl font-mono font-bold">¥{((gameState.averageUnitPrice ?? 0)/10000).toFixed(1)}万</div>
+                          <div className="text-[11px] text-slate-400">{gameState.productPhase || 'PROD'}</div>
+                      </div>
+                  </div>
+                  <div className="col-span-2 p-3 bg-black/20 border border-white/5 rounded">
+                      <div className="text-[10px] opacity-60 uppercase mb-2">MRR 内訳</div>
+                      <div className="flex flex-wrap gap-3 text-[11px] font-mono">
+                          <span className="text-emerald-300">+Dev ¥{(mrrBreakdown.engineerGrowth/1000).toFixed(1)}k</span>
+                          <span className="text-emerald-200">+Sales ¥{(mrrBreakdown.salesGrowth/1000).toFixed(1)}k</span>
+                          <span className="text-emerald-100">+Mkt ¥{(mrrBreakdown.marketingBonus/1000).toFixed(1)}k</span>
+                          <span className="text-red-300">-CS ¥{(mrrBreakdown.csPenalty/1000).toFixed(1)}k</span>
+                          <span className="text-slate-400">単価倍率 x{mrrBreakdown.priceFactor.toFixed(2)}</span>
                       </div>
                   </div>
               </div>

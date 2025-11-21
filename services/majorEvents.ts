@@ -136,6 +136,11 @@ const getPoolForPhase = (phase: Phase) => {
 
 const pickEvent = (events: MajorEvent[]) => events[Math.floor(Math.random() * events.length)];
 
+export const getMajorEventById = (id: string): MajorEvent | null => {
+  const all = [...seedEvents, ...seriesAEvents, ...seriesBEvents];
+  return all.find((ev) => ev.id === id) || null;
+};
+
 export const triggerMajorEvent = (
   phase: Phase,
   state: GameState,

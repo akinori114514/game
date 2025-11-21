@@ -4,6 +4,7 @@ import { GameState, Role, Phase, InvestorType, PricingStrategy, MarketTrend, CoF
 import { useScenario } from './useScenario';
 import { tickDifficultyModifier } from '../services/difficultyModifier';
 import { applyMRRUpdate } from '../services/revenueLogic';
+import { updateProductSnapshot } from '../services/productLogic';
 
 export const useGameEngine = (
     gameState: GameState, 
@@ -54,6 +55,7 @@ export const useGameEngine = (
     const nextTurn = (turnBonuses: { goldenLeadHit: boolean, incidentsResolved: number }, resetBonuses: () => void) => {
         setGameState(prevState => {
             if (prevState.is_game_over) return prevState;
+            const pmfBaseline = prevState.pmf_score;
             let nextState = { ...prevState };
             nextState = checkMachineMode(nextState);
             const productivityMultiplier = nextState.is_machine_mode ? 2.0 : 1.0;
@@ -217,6 +219,7 @@ export const useGameEngine = (
             nextState.turnNumber = (nextState.turnNumber || 0) + 1;
             nextState.actionPoints = nextState.maxActionPoints;
             nextState = applyMRRUpdate(nextState);
+            nextState = updateProductSnapshot(nextState, pmfBaseline);
 
             const triggeredEvent = checkTriggers(nextState);
             if (triggeredEvent) {

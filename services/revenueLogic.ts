@@ -1,7 +1,8 @@
 import { GameState, Role } from '../types';
+import { calculateAverageUnitPrice } from './productLogic';
 
-const ENGINEER_GROWTH_PER_DEV = 1000;
-const SALES_GROWTH_PER_SALES = 5000;
+const ENGINEER_GROWTH_PER_DEV = 1200;
+const SALES_GROWTH_PER_SALES = 5200;
 const REFERRAL_BASE_PER_MARKETING = 50; // small bonus scaled by quality
 const CHURN_BASE_RATE = 0.015;
 const MRR_PER_CS = 80000; // CS1人あたりMRR対応目安
@@ -23,21 +24,57 @@ export const calculateMarketingReferralBonus = (state: GameState) => {
   return REFERRAL_BASE_PER_MARKETING * numMarketing * (productQuality / 100);
 };
 
-export const applyMRRUpdate = (state: GameState): GameState => {
+export type MRRBreakdown = {
+  productQuality: number;
+  averageUnitPrice: number;
+  priceFactor: number;
+  engineerGrowth: number;
+  salesGrowth: number;
+  marketingBonus: number;
+  csPenalty: number;
+  engineerCount: number;
+  salesCount: number;
+  csCount: number;
+  marketingCount: number;
+};
+
+export const getMRRBreakdown = (state: GameState): MRRBreakdown => {
   const productQuality = state.productQuality ?? Math.max(0, 100 - state.tech_debt);
   const numEngineers = state.employees.filter(e => e.role === Role.ENGINEER).length;
   const numSales = state.employees.filter(e => e.role === Role.SALES).length;
+  const numCS = state.employees.filter(e => e.role === Role.CS).length;
+  const numMarketing = state.employees.filter(e => e.role === Role.MARKETER).length;
+  const averageUnitPrice = calculateAverageUnitPrice({ ...state, productQuality });
+  const priceFactor = averageUnitPrice / 50000;
 
   const engineerGrowth = ENGINEER_GROWTH_PER_DEV * numEngineers * (productQuality / 100);
-  const salesGrowth = SALES_GROWTH_PER_SALES * numSales;
-  const marketingBonus = calculateMarketingReferralBonus(state);
-  const csPenalty = calculateCSPenalty(state);
+  const salesGrowth = SALES_GROWTH_PER_SALES * numSales * priceFactor;
+  const marketingBonus = calculateMarketingReferralBonus({ ...state, productQuality });
+  const csPenalty = calculateCSPenalty({ ...state, productQuality });
 
-  const newMRR = Math.max(0, state.kpi.MRR + engineerGrowth + salesGrowth + marketingBonus - csPenalty);
+  return {
+    productQuality,
+    averageUnitPrice,
+    priceFactor,
+    engineerGrowth,
+    salesGrowth,
+    marketingBonus,
+    csPenalty,
+    engineerCount: numEngineers,
+    salesCount: numSales,
+    csCount: numCS,
+    marketingCount: numMarketing
+  };
+};
+
+export const applyMRRUpdate = (state: GameState): GameState => {
+  const breakdown = getMRRBreakdown(state);
+  const newMRR = Math.max(0, state.kpi.MRR + breakdown.engineerGrowth + breakdown.salesGrowth + breakdown.marketingBonus - breakdown.csPenalty);
 
   return {
     ...state,
-    productQuality,
-    kpi: { ...state.kpi, MRR: newMRR }
+    productQuality: breakdown.productQuality,
+    kpi: { ...state.kpi, MRR: newMRR },
+    averageUnitPrice: breakdown.averageUnitPrice
   };
 };

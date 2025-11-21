@@ -1,10 +1,10 @@
 import { createContext, useContext, useState, useMemo, useEffect, ReactNode } from 'react';
-import { GameState, Role, Phase, Employee, CoFounderType, SalesTarget, NarrativeEvent, InvestorType, PhilosophyProfile, GameNotification, NotificationType, PricingStrategy, FloatingText, CultureType, SocialPost, SocialReplyOption, MarketTrend, LogEntry, MajorEvent } from '../types';
+import { GameState, Role, Phase, Employee, CoFounderType, SalesTarget, NarrativeEvent, InvestorType, PhilosophyProfile, GameNotification, NotificationType, PricingStrategy, FloatingText, CultureType, SocialPost, SocialReplyOption, MarketTrend, LogEntry, MajorEvent, ProductPhase } from '../types';
 import { useScenario } from '../hooks/useScenario';
 import { useNotificationSystem } from '../hooks/useNotificationSystem';
 import { useGameEngine } from '../hooks/useGameEngine';
 import { playSfx } from '../services/sfx';
-import { triggerMajorEvent, applyMajorEventOutcome } from '../services/majorEvents';
+import { triggerMajorEvent, applyMajorEventOutcome, getMajorEventById } from '../services/majorEvents';
 import { getDealProfile } from '../services/dealProfiles';
 
 interface GameContextProps {
@@ -63,6 +63,10 @@ const InitialState: GameState = {
   sanity: 80,
   phase: Phase.SEED,
   pmf_score: 0,
+  productQuality: 100,
+  productPhase: ProductPhase.PROTOTYPE,
+  averageUnitPrice: 50000,
+  lastPmfDelta: 0,
   co_founder: null,
   employees: [],
   kpi: { MRR: 0, churn_rate: 0.02, CAC: 0, LTV: 0, growth_rate_mom: 0 },
@@ -93,6 +97,7 @@ const InitialState: GameState = {
     is_side_gig_unlocked: false,
     is_recruit_unlocked: false,
     has_triggered_seed_event: false,
+    has_triggered_seed_special: false,
     has_triggered_series_a_event: false,
     series_b_event_count: 0
   },
@@ -167,22 +172,25 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
   };
 
   useEffect(() => {
-      if (!gameState.flags.has_triggered_seed_event) {
-          setGameState(prev => {
-              const ev = triggerMajorEvent(prev.phase, prev, { force: true });
-              if (!ev) return prev;
-              const counts = prev.majorEventCountByPhase || { [Phase.SEED]: 0, [Phase.SERIES_A]: 0, [Phase.SERIES_B]: 0 };
-              const updatedCounts = { ...counts, [prev.phase]: (counts[prev.phase] || 0) + 1 };
-              return {
-                  ...prev,
-                  active_major_event: ev,
-                  majorEventCountByPhase: updatedCounts,
-                  flags: { ...prev.flags, has_triggered_seed_event: true },
-                  logs: appendLog(prev, `大型イベント発生: ${ev.label}`, 'EVENT')
-              };
-          });
-      }
-  }, [gameState.phase]);
+      if (gameState.phase !== Phase.SEED) return;
+      if (gameState.flags.has_triggered_seed_special) return;
+      if (gameState.week < 4) return;
+      if (gameState.active_major_event) return;
+      
+      const event = getMajorEventById('seed_bigdeal');
+      if (!event) return;
+      setGameState(prev => {
+          const counts = prev.majorEventCountByPhase || { [Phase.SEED]: 0, [Phase.SERIES_A]: 0, [Phase.SERIES_B]: 0 };
+          const updatedCounts = { ...counts, [Phase.SEED]: (counts[Phase.SEED] || 0) + 1 };
+          return {
+              ...prev,
+              active_major_event: event,
+              majorEventCountByPhase: updatedCounts,
+              flags: { ...prev.flags, has_triggered_seed_event: true, has_triggered_seed_special: true },
+              logs: appendLog(prev, `大型イベント発生: ${event.label}`, 'EVENT')
+          };
+      });
+  }, [gameState.week, gameState.phase, gameState.active_major_event, gameState.flags.has_triggered_seed_special]);
 
   useEffect(() => {
       if (gameState.phase === Phase.SERIES_B) {

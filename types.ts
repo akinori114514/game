@@ -62,6 +62,16 @@ export const MarketTrend = {
 
 export type MarketTrend = typeof MarketTrend[keyof typeof MarketTrend];
 
+export const ProductPhase = {
+  PROTOTYPE: 'PROTOTYPE',
+  VALIDATION: 'VALIDATION',
+  EARLY_PMF: 'EARLY_PMF',
+  PMF: 'PMF',
+  SCALE: 'SCALE'
+} as const;
+
+export type ProductPhase = typeof ProductPhase[keyof typeof ProductPhase];
+
 export interface Employee {
   id: string;
   name: string;
@@ -129,6 +139,7 @@ export interface GameFlags {
   is_side_gig_unlocked: boolean;
   is_recruit_unlocked: boolean;
   has_triggered_seed_event?: boolean;
+  has_triggered_seed_special?: boolean;
   has_triggered_series_a_event?: boolean;
   series_b_event_count?: number;
 }
@@ -248,6 +259,9 @@ export interface GameState {
   phase: Phase;
   pmf_score: number;
   productQuality?: number;
+  productPhase?: ProductPhase;
+  averageUnitPrice?: number;
+  lastPmfDelta?: number;
   co_founder: CoFounder | null;
   employees: Employee[];
   kpi: KPI;
