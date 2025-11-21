@@ -307,7 +307,7 @@ export const Dashboard = () => {
                               CS
                           </button>
                           <button onClick={() => hireEmployee(Role.MARKETER)} className={`p-3 border ${theme.border} hover:bg-white/5 transition-all text-left text-xs`}>
-                              マーケター
+                              マーケ
                           </button>
                         </div>
                       </div>
