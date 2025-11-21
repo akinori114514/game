@@ -1,8 +1,12 @@
 # Burn Rate Tokyo: 2020
 
 <div align="center">
-  <a href="https://akinori114514.github.io/game/" target="_blank" rel="noopener noreferrer">
-    <img alt="Play" src="https://img.shields.io/badge/%E3%82%B2%E3%83%BC%E3%83%A0%E9%96%8B%E5%A7%8B-%E2%96%B6%EF%B8%8F-orange?style=for-the-badge&logo=game-controller&logoColor=white" />
+  <a href="https://akinori114514.github.io/game/" target="_blank" rel="noopener noreferrer" style="text-decoration:none;">
+    <div style="display:inline-flex;align-items:center;gap:10px;padding:14px 26px;border-radius:14px;background:linear-gradient(135deg,#0ea5e9,#6366f1,#ec4899);color:#fff;font-weight:800;font-size:18px;letter-spacing:0.8px;box-shadow:0 12px 30px rgba(0,0,0,0.35);">
+      <span style="font-size:22px;">🎮</span>
+      <span>ゲーム開始</span>
+      <span style="font-size:16px;">▶︎</span>
+    </div>
   </a>
 </div>
 
