@@ -141,7 +141,7 @@ export const triggerMajorEvent = (
   state: GameState,
   options: TriggerOptions = {}
 ): MajorEvent | null => {
-  if (state.active_major_event) return null;
+  if (state.active_major_event && !options.force) return null;
   const counts = state.majorEventCountByPhase || {
     [Phase.SEED]: 0,
     [Phase.SERIES_A]: 0,
@@ -150,16 +150,18 @@ export const triggerMajorEvent = (
 
   const currentCount = counts[phase] || 0;
   const max = MAX_EVENTS[phase] ?? 0;
+  if (options.force) {
+    return pickEvent(getPoolForPhase(phase));
+  }
+
   if (currentCount >= max) return null;
 
-  if (!options.force) {
-    const minimum = MIN_EVENTS[phase] ?? 0;
-    if (currentCount < minimum) return null;
-    if (phase === Phase.SERIES_B && currentCount === 1) {
-      if (Math.random() < 0.5) return null;
-    } else {
-      return null;
-    }
+  const minimum = MIN_EVENTS[phase] ?? 0;
+  if (currentCount < minimum) return null;
+  if (phase === Phase.SERIES_B && currentCount === 1) {
+    if (Math.random() < 0.5) return null;
+  } else {
+    return null;
   }
 
   return pickEvent(getPoolForPhase(phase));

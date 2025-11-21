@@ -167,7 +167,21 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
   };
 
   useEffect(() => {
-      attemptMajorEvent(true);
+      if (!gameState.flags.has_triggered_seed_event) {
+          setGameState(prev => {
+              const ev = triggerMajorEvent(prev.phase, prev, { force: true });
+              if (!ev) return prev;
+              const counts = prev.majorEventCountByPhase || { [Phase.SEED]: 0, [Phase.SERIES_A]: 0, [Phase.SERIES_B]: 0 };
+              const updatedCounts = { ...counts, [prev.phase]: (counts[prev.phase] || 0) + 1 };
+              return {
+                  ...prev,
+                  active_major_event: ev,
+                  majorEventCountByPhase: updatedCounts,
+                  flags: { ...prev.flags, has_triggered_seed_event: true },
+                  logs: appendLog(prev, `大型イベント発生: ${ev.label}`, 'EVENT')
+              };
+          });
+      }
   }, [gameState.phase]);
 
   useEffect(() => {

@@ -25,6 +25,7 @@ interface Props {
   techDebt: number;
   difficultyModifier?: DifficultyModifier;
   majorEvent?: MajorEvent | null;
+  seedMissionsLeft?: number;
 }
 
 export const SalesMinigame: React.FC<Props> = ({
@@ -39,7 +40,8 @@ export const SalesMinigame: React.FC<Props> = ({
   pmfScore,
   techDebt,
   difficultyModifier,
-  majorEvent
+  majorEvent,
+  seedMissionsLeft = 0
 }) => {
   const { lang } = useGame();
   const [step, setStep] = useState<'SELECT' | 'BATTLE'>(majorEvent ? 'BATTLE' : 'SELECT');
@@ -52,6 +54,7 @@ export const SalesMinigame: React.FC<Props> = ({
   const [activeDealMRR, setActiveDealMRR] = useState<number>(0);
   const [successBonus, setSuccessBonus] = useState(0);
   const resolutionRef = useRef(false);
+  const seedBonus = phase === Phase.SEED && seedMissionsLeft > 0 ? 20 : 0;
   const previewChance = useMemo(() => {
       const salesCount = employees.filter(e => e.role === Role.SALES).length;
       const productQuality = Math.max(0, 100 - techDebt);
@@ -63,11 +66,11 @@ export const SalesMinigame: React.FC<Props> = ({
           const profile = getDealProfile(selectedTarget, phase);
           if (!profile) return null;
           const baseResistance = Math.max(1, profile.resistance * (1 - difficultyImpact));
-          const modifierBase = (profile.successModifierBase || 0) + successBonus;
+          const modifierBase = (profile.successModifierBase || 0) + successBonus + seedBonus;
           return calculateDealSuccess(pmfScore, salesCount, productQuality, modifierBase, baseResistance);
       }
       return null;
-  }, [activeEvent, selectedTarget, employees, techDebt, difficultyModifier, pmfScore, phase, successBonus]);
+  }, [activeEvent, selectedTarget, employees, techDebt, difficultyModifier, pmfScore, phase, successBonus, seedBonus]);
   
   // Battle State to track accumulated penalties
   const [accumulatedDebt, setAccumulatedDebt] = useState(0);
@@ -268,7 +271,7 @@ export const SalesMinigame: React.FC<Props> = ({
           metadata = { successChance, majorEventId: event.id, customLabel: event.label, isMajorEvent: true };
       } else if (profile && selectedTarget) {
           const baseResistance = Math.max(1, profile.resistance * (1 - difficultyImpact));
-          const modifierBase = (profile.successModifierBase || 0) + successBonus;
+          const modifierBase = (profile.successModifierBase || 0) + successBonus + seedBonus;
           successChance = calculateDealSuccess(pmfScore, salesCount, productQuality, modifierBase, baseResistance);
           metadata = { successChance };
       }
